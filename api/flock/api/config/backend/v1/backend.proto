@@ -1,0 +1,184 @@
+syntax = "proto3";
+
+package flock.api.config.backend.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/any.proto";
+import "flock/api/config/core/v1/ip_addr.proto";
+import "flock/api/config/core/v1/url.proto";
+import "flock/api/config/core/v1/base.proto";
+import "google/protobuf/wrappers.proto";
+import "flock/api/config/core/v1/healthcheck.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/api/config/backend/v1;backend";
+
+// EDS (endpoint discovery service) gets the endpoints of a backend from a discovery server, queried again every
+// refresh_rate of the backend.
+// With an http or https url, the agent sends `GET <url>?service_name=<service_name>` and expects a JSON list of
+// IPAddr (`ip`, `port`, `load_balancing_weight`), the answer of vigie (`github.com/seagalia/vigie`). With a grpc or
+// grpcs url, it calls GetEndpoints of vigie.eds.v1.EndpointDiscoveryService over gRPC, without TLS (h2c)
+// or with TLS.
+message EDS {
+  // URL of the discovery server. Its scheme is http, https, grpc or grpcs. With grpc and grpcs, the path is a prefix put
+  // before the procedure, for a server behind a reverse proxy, so `grpc://vigie:8080` is the usual form and a url that
+  // keeps `/services` fails with `Unimplemented`. Its user info is sent as basic auth, the password taken from a
+  // secret.
+  flock.api.config.core.v1.URL url = 1 [(buf.validate.field).cel = {
+    id: "eds.url.scheme"
+    message: "scheme must be http, https, grpc or grpcs"
+    expression: "this.scheme in ['http', 'https', 'grpc', 'grpcs']"
+  }];
+  // Name of the service to get the endpoints of, sent as the `service_name` query parameter or request field.
+  // When empty, the http query has no `service_name` parameter.
+  string service_name = 2 [(buf.validate.field).string.max_len = 253];
+  // PEM CA used to verify the certificate of the discovery server. When empty, the system CAs of the agent are used.
+  string ca = 3 [(buf.validate.field).string.max_len = 65536];
+  // HTTP headers (gRPC metadata for a gRPC server) added to each query.
+  repeated core.v1.HeaderValue headers = 4 [(buf.validate.field).repeated.max_items = 64];
+}
+
+// DNS gets the endpoints of a backend by resolving a name, again every refresh_rate of the backend. Each A or AAAA
+// record found gives one endpoint on port.
+message DNS {
+  // The DNS name to resolve.
+  string host = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 253
+  }];
+  // Port of the endpoints, the same for every address found.
+  uint32 port = 2 [(buf.validate.field).uint32 = {gte: 1, lte: 65535}];
+  // LookupFamily chooses the record types queried.
+  enum LookupFamily {
+    // Query AAAA records, then A records when no AAAA record is found. This is the default.
+    V6_PREFERRED = 0;
+    // Query A records, then AAAA records when no A record is found.
+    V4_PREFERRED = 1;
+    // Query A records only.
+    V4_ONLY = 2;
+    // Query AAAA records only.
+    V6_ONLY = 3;
+    // Query A and AAAA records and keep the addresses of both.
+    ALL = 4;
+  }
+  // The DNS lookup family to use when resolving the host. Defaults to V6_PREFERRED.
+  LookupFamily lookup_family = 3 [(buf.validate.field).enum = {defined_only: true}];
+  // DNS servers to query, tried in order until one gives an answer. When empty, the agent uses the DNS servers of its
+  // host.
+  repeated flock.api.config.core.v1.IPAddr nameservers = 4 [(buf.validate.field).repeated.max_items = 16];
+}
+
+// Backend is a set of endpoints that virtual servers send traffic to, with the way to discover them, check their
+// health and connect to them.
+message Backend {
+  // Identifier of the backend, set by the controller on creation.
+  string UUID = 1;
+  // The name of the backend.
+  string name = 2 [(buf.validate.field).string = {min_len: 1}];
+  // Connect to the endpoints with TLS. It applies to routes the agent proxies, a route forwarding packets unchanged to
+  // the endpoints ignores it.
+  bool enable_tls = 3;
+  // SNI sent when connecting to the endpoints with TLS. TLS health checks send it too.
+  string sni = 4 [(buf.validate.field).string.max_len = 253];
+  // PEM CA used to verify the certificates of the endpoints, for TLS connections and TLS health checks. When empty,
+  // the system CAs of the agent are used.
+  string ca = 5 [(buf.validate.field).string.max_len = 65536];
+  // Timeout to establish a connection to an endpoint. When unset, the agent applies its own default.
+  google.protobuf.Duration connect_timeout = 6;
+  // was discovery_type, the endpoint oneof already tells which discovery is used
+  reserved 7;
+  reserved "discovery_type";
+  // LbPolicy chooses how connections and requests are spread over the endpoints.
+  enum LbPolicy {
+    // Each endpoint in turn. This is the default.
+    ROUND_ROBIN = 0;
+
+    // Each endpoint in turn, more often for endpoints with a higher load_balancing_weight.
+    WEIGHTED_ROUND_ROBIN = 1;
+    // The endpoint with the fewest active connections or requests.
+    LEAST_REQUEST = 2;
+
+    // The endpoint with the fewest active connections or requests relative to its load_balancing_weight.
+    WEIGHTED_LEAST_REQUEST = 3;
+
+
+    // Consistent hashing on a ring.
+    RING_HASH = 4;
+
+    // Maglev consistent hashing.
+    MAGLEV = 5;
+  }
+
+  // The load balancing policy. Defaults to ROUND_ROBIN.
+  LbPolicy lb_policy = 8;
+  // How the endpoints of the backend are found.
+  oneof endpoint {
+    option (buf.validate.oneof).required = true;
+    // Endpoints resolved from a DNS name.
+    DNS dns = 9;
+    // Fixed list of endpoints, never refreshed.
+    flock.api.config.core.v1.IPAddrGroup ip_addr_group = 10;
+    // Endpoints given by a discovery server.
+    EDS eds = 11;
+  }
+  // HttpProtocolOptions specifies Http upstream protocol options.
+  // It only applies to http virtual server type.
+  // This is an extension point for any load balancer specific options.
+  // valid extensions are:
+  // - flock.extensions.common.starling_options.v1.HttpProtocolOptions
+  google.protobuf.Any http_protocol_options = 12;
+
+  // Health check run by the agent on every endpoint. Traffic only goes to the endpoints it reports healthy.
+  flock.api.config.core.v1.HealthCheck health_check = 13 [(buf.validate.field).required = true];
+
+  // Interval between two discoveries of the endpoints of a DNS or EDS backend, also waited before retrying a failed
+  // discovery. Ignored by ip_addr_group backends. Defaults to 5s and must be more than 1ms.
+  google.protobuf.Duration refresh_rate = 14 [(buf.validate.field).duration = {
+    gt {nanos: 1000000}
+  }, (buf.validate.field).required = true];
+
+  // Send a proxy protocol header to the endpoints at the start of each connection, so they get the client address.
+  bool enable_proxy_protocol = 17;
+  // ProxyProtocolVersion is the version of the proxy protocol header.
+  enum ProxyProtocolVersion {
+    // Human readable header.
+    V1 = 0;
+    // Binary header.
+    V2 = 1;
+  }
+  // ProxyProtocolVersion is the version of the proxy protocol header sent when enable_proxy_protocol is set.
+  // Defaults to V1.
+  ProxyProtocolVersion proxy_protocol_version = 18;
+
+  // Extension point for specific options linked to the LB implementation.
+  // valid extensions are:
+  // - flock.extensions.backend.starling_options.v1.BackendOptions
+  // - flock.extensions.backend.f5_options.v1.BackendOptions
+  google.protobuf.Any typed_options = 15;
+
+  // Free key/value pairs attached to the backend. The controller indexes them, so list filters with is_metadata can
+  // match them. A value `secret://<secret uuid>/<key>` points at a value of a Secret instead of holding it, see
+  // flock.api.config.secret.v1.Secret.
+  map<string, string> metadata = 16;
+}
+
+// EndpointStat is the health of one endpoint of a backend, as seen by an agent.
+message EndpointStat {
+  // The IP address of the endpoint.
+  core.v1.IPAddr ip_addr = 1 [(buf.validate.field).required = true];
+  // Result of the health check of the endpoint.
+  bool healthy = 2;
+  // Error of the last failed health check, unset when there is none.
+  google.protobuf.StringValue last_error = 3;
+}
+
+// BackendEndpointStats is the health of the endpoints of a backend, as seen by an agent.
+message BackendEndpointStats {
+  // UUID of the backend.
+  string backend_uuid = 1 [(buf.validate.field).string = {min_len: 1}];
+  // Health of the backend computed by the agent from its endpoints. Listing every backend sets it when all the
+  // endpoints are healthy, asking for one backend sets it when at least one endpoint is healthy.
+  bool healthy = 2;
+  // The health status of all endpoints in the backend.
+  repeated EndpointStat endpoint_stats = 3;
+}

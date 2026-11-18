@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package flock.services.core.v1;
+
+import "buf/validate/validate.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/services/core/v1;svccore";
+
+
+// ListFilter is a filter for a list request. In the list calls of the controller, the filters on `name` and `uuid`
+// are combined with OR and the metadata filters with AND. A resource must match both groups.
+message ListFilter {
+  // Operator compares the value of the field with `value`.
+  enum Operator {
+    // The field equals value.
+    EQUAL = 0;
+    // The field differs from value.
+    NOT_EQUAL = 1;
+    // The field contains value.
+    LIKE = 8;
+    // The field does not contain value.
+    NOT_LIKE = 9;
+  }
+  // key is the field to filter on. Without is_metadata, it is `name`, `uuid` or the type URL of another resource kind
+  // (e.g. `type.googleapis.com/flock.api.config.vs.v1.VirtualServer`), and other keys are ignored. A type URL key
+  // takes that resource's UUID as value and lists the resources linked to it. Such filters only support EQUAL.
+  // With is_metadata, it is the metadata key.
+  string key = 1 [(buf.validate.field).string.min_len = 1];
+  // value is the value to filter on.
+  string value = 2 [(buf.validate.field).string.min_len = 1];
+  // operator is the comparison to apply. Defaults to EQUAL.
+  Operator operator = 3;
+  // is_metadata is true if the filter is on the metadata of the resource, whose key is `key`.
+  bool is_metadata = 4;
+}

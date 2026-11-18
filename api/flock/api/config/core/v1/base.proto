@@ -1,0 +1,89 @@
+syntax = "proto3";
+
+package flock.api.config.core.v1;
+
+import "buf/validate/validate.proto";
+import "flock/type/v1/secret.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/api/config/core/v1;core";
+
+// Node identifies the agent opening a discovery stream to the controller. It is sent in the first
+// DeltaDiscoveryRequest of each stream. The controller identifies the agent by the CN of its client certificate,
+// Lookup.ListInstanceNodes serves what it keeps.
+message Node {
+  reserved 1, 10;
+  reserved "name", "agent_uuid";
+
+  // Kind of agent requesting configuration, the same value as the type of the agent.
+  string client_type = 6;
+
+  // Version of the agent binary.
+  SemanticVersion client_version = 7;
+
+  // Extensions (typed options messages) the agent knows how to unpack.
+  repeated Extension extensions = 9;
+
+}
+
+// Extension declares one extension message an agent supports.
+message Extension {
+  // Type URL of the extension message, `type.googleapis.com/` followed by the full name of a message under
+  // `flock.extensions`.
+  string type_url = 1;
+
+  // Category names the `google.protobuf.Any` field the extension can be packed into, e.g.
+  // `flock.api.config.vip.v1.vip.typed_announce`.
+  string category = 2;
+
+  // Indicates that the extension is present but disabled on the agent.
+  bool disabled = 3;
+
+}
+
+// SemanticVersion is a version following semver, formatted as `major.minor.patch[-prerelease][+metadata]`.
+message SemanticVersion {
+  // Major version number.
+  uint32 major = 1;
+
+  // Minor version number.
+  uint32 minor = 2;
+
+  // Patch version number.
+  uint32 patch = 3;
+
+  // Pre-release part, written after a `-` (e.g. `rc1`). Empty for a release.
+  string prerelease = 4;
+
+  // Build metadata, written after a `+`. Empty when there is none.
+  string metadata = 5;
+}
+
+// Header name/value pair.
+message HeaderValue {
+  // Header name.
+  string key = 1
+  [(buf.validate.field).string =
+  {min_len: 1 max_bytes: 16384 well_known_regex: KNOWN_REGEX_HTTP_HEADER_NAME strict: false}];
+
+  // Value of the header, given as is or taken from a secret.
+  oneof value_source {
+    // Header value.
+    string value = 2 [
+      (buf.validate.field).string = {max_bytes: 16384 well_known_regex: KNOWN_REGEX_HTTP_HEADER_VALUE strict: false}
+    ];
+    // Value of a secret, for a header carrying a credential such as `Authorization`. Agents send the value of the
+    // secret, an empty value until they hold the secret.
+    flock.type.v1.SecretKeyRef value_from_secret = 3;
+  }
+}
+
+// Header name/value pair plus option to control append behavior.
+message HeaderValueOption {
+
+  // Header name/value pair that this option applies to.
+  HeaderValue header = 1 [(buf.validate.field) = {required: true}];
+
+  // When true, the value is added next to the existing values of the header. When false (default), it replaces
+  // them.
+  bool append = 2;
+}

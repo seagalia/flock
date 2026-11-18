@@ -1,0 +1,26 @@
+kind: backend
+name: web
+ip_addr_group:
+  ip_addresses:
+  - ip: 10.0.0.10
+    port: 8080
+health_check:
+  tcp_health_check: {}
+---
+kind: vs
+name: web
+port: 80
+http_routes_config:
+  virtual_hosts:
+  - domains: ['*']
+    routes:
+    - name: default
+      match: {prefix: /}
+      backend_uuid: name:web
+---
+kind: vip
+name: public
+ip: 192.0.2.10
+virtual_servers_uuid:
+- 6b0c1c9e-0f43-4c47-a0a7-0d1f1d7b8e21
+- name:web

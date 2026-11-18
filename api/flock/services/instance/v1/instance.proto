@@ -1,0 +1,100 @@
+syntax = "proto3";
+
+package flock.services.instance.v1;
+
+import "buf/validate/validate.proto";
+import "flock/api/config/instance/v1/instance.proto";
+import "flock/services/core/v1/filter.proto";
+import "flock/services/core/v1/requests.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/services/instance/v1;svcinstance";
+
+// CreateInstanceRequest is the request message for the CreateInstance method.
+message CreateInstanceRequest {
+  // The instance to create, its UUID is set by the controller. The caller needs the READER role on each of its VIPs.
+  flock.api.config.instance.v1.Instance instance = 1 [(buf.validate.field) = {required: true}];
+}
+
+// UpdateInstanceRequest is the request message for the UpdateInstance method.
+message UpdateInstanceRequest {
+  // The instance uuid to update.
+  string UUID = 1 [(buf.validate.field).string = {min_len: 1}];
+  // The instance replacing the stored one. Its zone_uuid and resource_type cannot change, its vips_uuid change with
+  // AddVipToInstance and DeleteVipFromInstance only.
+  flock.api.config.instance.v1.Instance instance = 2 [(buf.validate.field) = {required: true}];
+}
+
+// AddVipToInstanceRequest is the request message for the AddVipToInstance method.
+message AddVipToInstanceRequest {
+  // The instance uuid to update.
+  string UUID = 1 [(buf.validate.field).string = {min_len: 1}];
+  // The uuid of the VIP to add to the instance. The caller needs the READER role on it.
+  string vip_uuid = 2 [(buf.validate.field) = {required: true}];
+}
+
+// DeleteVipFromInstanceRequest is the request message for the DeleteVipFromInstance method.
+message DeleteVipFromInstanceRequest {
+  // The instance uuid to update.
+  string UUID = 1 [(buf.validate.field).string = {min_len: 1}];
+  // The uuid of the VIP to remove from the instance.
+  string vip_uuid = 2 [(buf.validate.field) = {required: true}];
+}
+
+// InstanceResponse is the response message for the CreateInstance, ReadInstance, UpdateInstance methods.
+message InstanceResponse {
+  // The instance.
+  flock.api.config.instance.v1.Instance instance = 1 [(buf.validate.field) = {required: true}];
+}
+
+// ListInstanceRequest is the request message for the ListInstance method.
+message ListInstanceRequest {
+  // The maximum number of instances to return, 50 when 0.
+  int32 limit = 1 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
+  // The offset of the first instance to return.
+  int32 offset = 2 [(buf.validate.field).int32 = {gte: 0}];
+  // The filters to apply to the list.
+  repeated core.v1.ListFilter filters = 3;
+}
+
+// ListInstanceResponse is the response message for the ListInstance method.
+message ListInstanceResponse {
+  // List of instances.
+  repeated flock.api.config.instance.v1.Instance instances = 1;
+}
+
+// GetInstanceStatusResponse is the response message for the GetInstanceStatus method.
+message GetInstanceStatusResponse {
+  // The instance status.
+  flock.api.config.instance.v1.InstanceStatus status = 1 [(buf.validate.field) = {required: true}];
+}
+
+// Instance is the service that manages instances.
+service Instance {
+  // CreateInstance creates a new instance through the instantiator serving its zone and resource type. With the ipam
+  // enabled, the IPs of its VIPs are acquired in the zone. The caller becomes OWNER of the instance.
+  rpc CreateInstance(CreateInstanceRequest) returns (InstanceResponse) {}
+  // ReadInstance returns the instance with the given uuid. The caller needs the READER role on it.
+  rpc ReadInstance(flock.services.core.v1.UuidRequest) returns (InstanceResponse) {}
+  // UpdateInstance updates the instance with the given uuid. The caller needs the WRITER role on it, and the OWNER
+  // role to change its name.
+  rpc UpdateInstance(UpdateInstanceRequest) returns (InstanceResponse) {}
+  // DeleteInstance deletes the instance with the given uuid and releases the IPs of its VIPs in the ipam. The caller
+  // needs the OWNER role on it.
+  rpc DeleteInstance(flock.services.core.v1.UuidRequest) returns (google.protobuf.Empty) {}
+  // ListInstance returns the list of instances. An admin sees every instance, another user only the instances they
+  // have a permission on.
+  rpc ListInstance(ListInstanceRequest) returns (ListInstanceResponse) {}
+  // GetInstanceStatus returns the status of the instance with the given uuid, as given by its instantiator. The
+  // caller needs the READER role on it.
+  rpc GetInstanceStatus(flock.services.core.v1.UuidRequest) returns (GetInstanceStatusResponse) {}
+  // AddVipToInstance adds the vip to the instance with the given uuid. A VIP already used by another instance of the
+  // same zone is refused with AlreadyExists. The caller needs the WRITER role on the instance.
+  rpc AddVipToInstance(AddVipToInstanceRequest) returns (google.protobuf.Empty) {}
+  // DeleteVipFromInstance deletes the vip from the instance with the given uuid and releases its IP in the ipam. The
+  // caller needs the WRITER role on the instance.
+  rpc DeleteVipFromInstance(DeleteVipFromInstanceRequest) returns (google.protobuf.Empty) {}
+}

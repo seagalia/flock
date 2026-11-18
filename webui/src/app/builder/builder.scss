@@ -1,0 +1,20 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--flock-border);
+  border-radius: 8px;
+  color: var(--flock-error-text);
+}
+
+.stepper {
+  background: transparent;
+}

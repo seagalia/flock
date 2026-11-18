@@ -1,0 +1,1 @@
+{"id":"977289a2-139f-4aee-a7b0-e11367382102","results":[{"code":200,"message":"success","dryRun":true,"lineCount":25,"host":"localhost","tenant":"flock","runTime":34,"declarationId":"flock-inst-1"}],"declaration":{"class":"ADC","id":"flock-inst-1","schemaVersion":"3.50.0","updateMode":"selective"}}

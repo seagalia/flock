@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package flock.services.agent.logs.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/empty.proto";
+
+
+option go_package = "github.com/seagalia/flock/sdk/flock/services/agent/logs/v1;agentlogs";
+
+// LogStreamResponse is the response message for the Logs.Follow method.
+message LogStreamResponse {
+  // StreamStarted is the first message of the stream, sent at once so a client holds the stream before the first log
+  // line.
+  message StreamStarted {}
+  // What happened on the stream.
+  oneof event {
+    option (buf.validate.oneof).required = true;
+    // The stream is open, only the first message is this one.
+    StreamStarted started = 2;
+    // log_line is a log line of the agent. It can have ansi color codes.
+    string log_line = 1 [(buf.validate.field).string.min_len = 1];
+  }
+}
+
+// LogLatestResponse is the response message for the Logs.Latest method.
+message LogLatestResponse {
+  // log_lines are the latest log lines of the agent, oldest first, as many as the agent keeps. They can have ansi
+  // color codes.
+  repeated string log_lines = 1;
+}
+
+// Logs is the agent service giving the log lines of the agent, the controller calls it for the Lookup service.
+service Logs {
+  // Follow streams the log lines the agent writes from the time of the call, until the client cancels, after a first
+  // started message. An agent may drop lines for a client too slow to read them.
+  rpc Follow(google.protobuf.Empty) returns (stream LogStreamResponse) {
+  }
+  // Latest returns the latest log lines the agent kept.
+  rpc Latest(google.protobuf.Empty) returns (LogLatestResponse) {
+  }
+}

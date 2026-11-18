@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package flock.services.login.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/services/login/v1;svclogin";
+
+// GetTokenRequest is the request message for the GetToken method.
+message GetTokenRequest {
+  // The username of the user.
+  string username = 1 [(buf.validate.field).string = {min_len: 1}];
+  // The password of the user.
+  string password = 2 [(buf.validate.field).string = {min_len: 1}];
+}
+
+// GetTokenResponse is the response message for the GetToken method.
+message GetTokenResponse {
+  // The token, a JWT made by the controller, sent as a bearer token in the authorization header.
+  string token = 1 [(buf.validate.field).string = {min_len: 1}];
+  // The expiration date of the token, at most 10 hours after the login.
+  google.protobuf.Timestamp expires_at = 2 [(buf.validate.field).required = true];
+}
+
+// ServiceAuth is the login service of the controller.
+message ServiceAuth {
+  // The type of the service, one of "BASIC", "LDAP" and "OIDC".
+  string type = 1 [(buf.validate.field).string = {min_len: 1}];
+  // The OpenID Connect provider users log in with, set only when the type is "OIDC".
+  OidcProvider oidc = 2;
+}
+
+// OidcProvider is the OpenID Connect provider of an OIDC login service. Clients log in with it directly and send the
+// token it gives as a bearer token.
+message OidcProvider {
+  // The issuer url of the provider, its discovery document is at <issuer_url>/.well-known/openid-configuration.
+  string issuer_url = 1 [(buf.validate.field).string = {min_len: 1}];
+  // The client id that clients use to log in with the provider.
+  string client_id = 2 [(buf.validate.field).string = {min_len: 1}];
+  // The scopes that clients request from the provider.
+  repeated string scopes = 3;
+}
+
+// MeResponse is the response message for the Me method.
+message MeResponse {
+  // The username of the user.
+  string username = 1;
+  // The groups of the user.
+  repeated string groups = 2;
+  // IsAdmin is true when the user or one of its groups is an admin of the controller configuration.
+  bool is_admin = 3;
+}
+
+// Login is the service to log in to the controller. Its methods are callable without a token, except Me.
+service Login {
+  // GetToken returns a token for the given user, to send as a bearer token in the authorization header. Only BASIC
+  // and LDAP services serve it, an OIDC service answers FailedPrecondition. Wrong credentials are refused with
+  // Unauthenticated.
+  rpc GetToken (GetTokenRequest) returns (GetTokenResponse) {
+  }
+  // GetServiceAuth returns the login service of the controller.
+  rpc GetServiceAuth(google.protobuf.Empty) returns (ServiceAuth) {}
+  // Me returns the user information for the given token.
+  rpc Me(google.protobuf.Empty) returns (MeResponse) {}
+}

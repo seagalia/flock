@@ -1,0 +1,9 @@
+@startuml
+agent -> controller: connect to and give type url to listen with its own info and resources it may already have
+controller -> agent: reply back with a list of resources that should be added/update or deleted with the id of the request (nonce)
+agent -> controller: reply back with the id request to say it has received the list
+loop until controller or agent stop
+  controller -> agent: send resource added/delete/updated with the id of the request (nonce)
+  agent -> controller: reply back with the id request to say it has received the resource
+end
+@enduml

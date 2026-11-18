@@ -1,0 +1,18 @@
+@startuml
+==Instance creation==
+Dev->"LB controller": Create an instance in this zone with these resources
+"LB controller"->GIVE: Orders the creation of a VM with this info \n(instance-id and connection info of the controller)
+"LB controller"->Dev: Your instance is being created
+"LB controller"->Dev: Your instance is being created
+loop until create
+  Dev->"LB controller": Is the instance created?
+end
+==VIP creation==
+Dev->"LB controller": Can I have a vip?
+"LB controller"->"Ref IP": Can I have an IP from the LB pool?
+"Ref IP"->"LB controller": Here is the ip 10.x.x.x
+"LB controller"->Dev: Here is your vip, you can use it now
+==l4/l7 LB creation==
+Dev->"LB controller": Here is my vip, I would like load balancing on \nthis port to this backend address, with healthcheck
+"LB controller"->Dev: I record your request and create \na revision so your nodes get the info
+@enduml

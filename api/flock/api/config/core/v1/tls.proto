@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package flock.api.config.core.v1;
+
+import "buf/validate/validate.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/api/config/core/v1;core";
+
+// TLS is the configuration of TLS termination on a listener, matched on the SNI of the connection and serving the
+// given certificates. The minimum TLS version is 1.2.
+message TLS {
+  // If non-empty, a list of server names (e.g. SNI for TLS protocol) to consider when choosing the TLS configuration.
+  // Those values will be compared against the server names of a new connection, when detected by one of the listener filters.
+  // If empty, this configuration matches every connection that no other server name matched.
+  //
+  // The server name will be matched against all wildcard domains, i.e. www.example.com will be first matched against
+  // www.example.com, then *.example.com, then *.com.
+  //
+  // Note that partial wildcards are not supported, and values like *w.example.com are invalid.
+  repeated string server_names = 1 [
+    (buf.validate.field).repeated.max_items = 100,
+    (buf.validate.field).repeated.items.string.max_len = 253
+  ];
+
+  // UUIDs of the certificate resources served on this listener, at least one. The agent receives them from the
+  // controller.
+  repeated string certificates_uuid = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 16
+  ];
+
+  // Supplies the list of ALPN protocols that the listener should expose. In
+  // practice this is likely to be set to one of two values:
+  //
+  // * ["h2", "http/1.1"] If the listener is going to support both HTTP/2 and HTTP/1.1.
+  // * ["http/1.1"] If the listener is only going to support HTTP/1.1.
+  //
+  // There is no default for this parameter. If empty, tls handshake will not expose ALPN.
+  repeated string alpn_protocols = 3 [
+    (buf.validate.field).repeated.max_items = 8,
+    (buf.validate.field).repeated.items.string.max_len = 32
+  ];
+}

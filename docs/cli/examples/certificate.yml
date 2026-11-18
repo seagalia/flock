@@ -1,0 +1,9 @@
+# flock create-certificate -f certificate.yml
+# --name, --domains, --cert, --key and --ca override what the file sets
+name: example-com
+domain_names:
+- example.com
+- www.example.com
+# cert_chain, private_key and ca take PEM content; files are simpler through --cert, --key and --ca
+metadata:
+  team: web

@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package flock.api.config.core.v1;
+
+import "buf/validate/validate.proto";
+import "flock/type/v1/secret.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/api/config/core/v1;core";
+
+// URL is a URL split in its parts, formatted as `scheme://host[:port]path`.
+message URL {
+  // UserInfo holds credentials for HTTP basic auth. The password always comes from a secret.
+  message UserInfo {
+    option (buf.validate.message).cel = {
+      id: "user_info.user"
+      message: "a password needs a user"
+      expression: "!has(this.password_from_secret) || this.user != ''"
+    };
+
+    // User name.
+    string user = 1 [(buf.validate.field).string.max_len = 256];
+    // Password sent with the user. Empty sends the user with an empty password.
+    oneof password_source {
+      // Value of password_from_secret, set by the agents when they read the secret. The controller refuses it, so a
+      // password is never stored in clear.
+      string password = 2 [(buf.validate.field).cel = {
+        id: "agent_only"
+        message: "the password is set by agents only, point at a secret with password_from_secret"
+        expression: "this == ''"
+      }];
+      // Value of a secret used as the password.
+      flock.type.v1.SecretKeyRef password_from_secret = 3;
+    }
+  }
+  // Scheme of the URL, e.g. `https`.
+  string scheme = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 16
+  }];
+  // Host name or IP address, without port.
+  string host = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 253
+  }];
+  // Port. 0 (default) leaves it out of the URL, so the default port of the scheme applies.
+  uint32 port = 3;
+  // Credentials sent as HTTP basic auth. Empty sends none.
+  UserInfo user_info = 4;
+  // Path of the URL, appended right after the host and port, so it starts with `/`.
+  string path = 5 [(buf.validate.field).string.max_len = 2048];
+}

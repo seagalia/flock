@@ -1,0 +1,1 @@
+{"code":422,"errors":["/probe_tenant/probe_app/web_pool/members/0/servicePort: should be integer"],"message":"declaration is invalid","host":"localhost","tenant":["probe_tenant"],"declarationId":"autogen_2d091638-a673-44d0-bc47-c31f9f253c30"}

@@ -1,0 +1,117 @@
+syntax = 'proto3';
+
+package flock.services.zone.v1;
+
+import "buf/validate/validate.proto";
+import "flock/api/config/zone/v1/zone.proto";
+import "flock/services/core/v1/requests.proto";
+import "flock/services/core/v1/filter.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/services/zone/v1;svczone";
+
+// CreateZoneRequest is the request message for the CreateZone method.
+message CreateZoneRequest {
+  // Zone to create, its UUID is set by the controller.
+  flock.api.config.zone.v1.Zone zone = 1 [(buf.validate.field) = {required: true}];
+}
+
+// UpdateZoneRequest is the request message for the UpdateZone method.
+message UpdateZoneRequest {
+  // The zone uuid to update.
+  string UUID = 1 [(buf.validate.field).string = {min_len: 1}];
+  // Zone replacing the stored one. Its pools must be the stored pools, they change with the pool methods.
+  flock.api.config.zone.v1.Zone zone = 2 [(buf.validate.field) = {required: true}];
+}
+
+// ListZoneRequest is the request message for the ListZone method.
+message ListZoneRequest {
+  // The maximum number of zones to return, 50 when 0.
+  int32 limit = 1 [(buf.validate.field).int32 = {gte: 0, lte: 100}];
+  // The offset of the first zone to return.
+  int32 offset = 2 [(buf.validate.field).int32 = {gte: 0}];
+  // The filters to apply to the list.
+  repeated core.v1.ListFilter filters = 3;
+}
+
+// ListZoneResponse is the response message for the ListZone method.
+message ListZoneResponse {
+  // Zones of the page.
+  repeated flock.api.config.zone.v1.Zone zones = 1 [(buf.validate.field).repeated = {min_items: 1}];
+}
+
+// ZoneResponse is the response message of the methods giving one zone.
+message ZoneResponse {
+  // Zone as stored after the call.
+  flock.api.config.zone.v1.Zone zone = 1 [(buf.validate.field) = {required: true}];
+}
+
+// AddPoolToZoneRequest is the request message for the AddPoolToZone method.
+message AddPoolToZoneRequest {
+  // The zone uuid to add the pool to.
+  string UUID = 1 [(buf.validate.field).string = {min_len: 1}];
+  // The pool to add after the pools of the zone, its name must not be taken in the zone.
+  flock.api.config.zone.v1.IpPool pool = 2 [(buf.validate.field) = {required: true}];
+}
+
+// UpdatePoolOfZoneRequest is the request message for the UpdatePoolOfZone method.
+message UpdatePoolOfZoneRequest {
+  // The zone uuid of the pool.
+  string UUID = 1 [(buf.validate.field).string = {min_len: 1}];
+  // The pool replacing the pool of the same name.
+  flock.api.config.zone.v1.IpPool pool = 2 [(buf.validate.field) = {required: true}];
+}
+
+// DeletePoolFromZoneRequest is the request message for the DeletePoolFromZone method.
+message DeletePoolFromZoneRequest {
+  // The zone uuid of the pool.
+  string UUID = 1 [(buf.validate.field).string = {min_len: 1}];
+  // The name of the pool to delete.
+  string pool_name = 2 [(buf.validate.field).string = {min_len: 1}];
+}
+
+// Zone is the service that manages zones. Changing a zone or its pools is reserved to the admins of the controller
+// configuration.
+service Zone {
+  // CreateZone creates a zone. With the ipam enabled, the ranges of its pools are synced to the ipam.
+  rpc CreateZone(CreateZoneRequest)
+      returns (ZoneResponse) {
+  }
+
+  // ReadZone returns the zone with the given uuid.
+  rpc ReadZone(flock.services.core.v1.UuidRequest)
+      returns (ZoneResponse) {
+  }
+
+  // UpdateZone replaces the zone with the given uuid. A request changing its pools is refused with InvalidArgument.
+  rpc UpdateZone(UpdateZoneRequest)
+      returns (ZoneResponse) {
+  }
+
+  // DeleteZone deletes the zone with the given uuid. A zone used by an instance is refused with FailedPrecondition.
+  rpc DeleteZone(flock.services.core.v1.UuidRequest)
+      returns (google.protobuf.Empty) {
+  }
+
+  // ListZone returns the zones. An admin sees every zone, another user only the zones they have a permission on.
+  rpc ListZone(ListZoneRequest)
+      returns (ListZoneResponse) {
+  }
+
+  // AddPoolToZone appends a pool to a zone. With the ipam enabled, the first pool of a zone records the ips of the
+  // vips of its instances.
+  rpc AddPoolToZone(AddPoolToZoneRequest)
+      returns (ZoneResponse) {
+  }
+
+  // UpdatePoolOfZone replaces the pool of the same name. With the internal ipam, a range holding an allocated ip
+  // can't change its bounds nor be removed, so grow a pool by adding a subnet or a range next to it.
+  rpc UpdatePoolOfZone(UpdatePoolOfZoneRequest)
+      returns (ZoneResponse) {
+  }
+
+  // DeletePoolFromZone deletes a pool. With the internal ipam, a pool holding an allocated ip can't be deleted.
+  rpc DeletePoolFromZone(DeletePoolFromZoneRequest)
+      returns (ZoneResponse) {
+  }
+}

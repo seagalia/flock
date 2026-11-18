@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package flock.services.agent.manage.v1;
+
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/services/agent/manage/v1;agentmgmt";
+
+// UpdateServerCertificateRequest is the request message for the UpdateServerCertificate method.
+// The key pair and the CA can be updated separately, at least one of them must be given (InvalidArgument otherwise).
+// Each given field must be PEM.
+message UpdateServerCertificateRequest {
+  // CertChain is the new certificate chain of the agent server, given with private_key.
+  // Optional when ca is given and private_key is empty too.
+  string cert_chain = 1;
+  // PrivateKey is the private key of cert_chain.
+  // Optional when ca is given and cert_chain is empty too.
+  string private_key = 2;
+  // CA is a certificate authority to trust for client certificates and for the controller. The agent adds it to the
+  // CAs it already trusts, so clients can roll to a new CA.
+  // Optional when cert_chain and private_key are given.
+  string ca = 3;
+}
+
+// Manage is the agent service to manage the agent.
+service Manage {
+  // UpdateServerCertificate replaces the key pair of the agent server or adds a trusted CA, or both.
+  // Implementation should be able to update without interruption/restart.
+  rpc UpdateServerCertificate(UpdateServerCertificateRequest) returns (google.protobuf.Empty);
+}

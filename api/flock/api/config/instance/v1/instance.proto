@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package flock.api.config.instance.v1;
+
+import "buf/validate/validate.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/api/config/instance/v1;instance";
+
+// Instance is a load balancing service for a client, run by the agents an instantiator gives it in its zone. Agents
+// subscribe to the controller with the UUID of their instance and receive the VIPs of the instance.
+message Instance {
+  // UUID of the instance, set by the controller at creation.
+  string UUID = 1;
+  // Name of the instance. Only an owner of the instance can change it.
+  string name = 2 [(buf.validate.field).string = {min_len: 1}];
+  // ZoneUUID is the UUID of the zone of the instance. It cannot change after creation.
+  string zone_uuid = 3 [(buf.validate.field).string = {min_len: 1}];
+  // ResourceType is the name of a resource type of an instantiator serving the zone (ex: "large", "small", ...). It
+  // cannot change after creation.
+  string resource_type = 4 [(buf.validate.field).string = {
+    max_len: 253
+    min_len: 1
+  }];
+  // VipsUUID are the UUIDs of the VIPs announced by the instance. A VIP can be on one instance per zone. After
+  // creation, they change with the AddVipToInstance and DeleteVipFromInstance calls only.
+  repeated string vips_uuid = 5 [
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.max_items = 1000
+  ];
+  // Metadata of the instance, usable in list filters. A value `secret://<secret uuid>/<key>` points at a value of a
+  // Secret instead of holding it, see flock.api.config.secret.v1.Secret.
+  map<string, string> metadata = 6;
+}
+
+// InstanceStatus is the status of an instance, as given by its instantiator.
+message InstanceStatus {
+  // State enum of the instance
+  enum State {
+    UNKNOWN = 0;
+    CREATING = 1;
+    RUNNING = 2;
+    ERRORED = 3;
+    DELETING = 4;
+    DELETED = 5;
+  }
+  // CurrentState is the current state of the instance. A change answered with ERRORED fails.
+  State current_state = 1;
+  // DesiredState is the state the instantiator is bringing the instance to.
+  State desired_state = 2;
+  // ErrorMessage explains the error when current_state is ERRORED.
+  string error_message = 3;
+}

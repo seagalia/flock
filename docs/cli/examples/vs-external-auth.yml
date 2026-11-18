@@ -1,0 +1,52 @@
+# flock apply -f vs-external-auth.yml
+#
+# Every route of the virtual host asks oauth2-proxy whether the request may pass, except /oauth2/, which serves its
+# sign in and callback pages. oauth2-proxy runs in the mode that answers exactly 200 to a logged in session
+# (its /oauth2/auth answers 202, which a check counts as a deny):
+#
+#   oauth2-proxy --http-address=0.0.0.0:4180 --provider=oidc --oidc-issuer-url=<issuer> \
+#     --client-id=<id> --client-secret=<secret> --cookie-secret=<32 bytes> --cookie-secure=false --email-domain=* \
+#     --upstream=static://200 --reverse-proxy --set-xauthrequest --skip-provider-button \
+#     --redirect-url=http://app.example.com/oauth2/callback
+#
+# --cookie-secure=false fits this plain HTTP virtual server only: drop it once the virtual server serves HTTPS.
+kind: backend
+name: oauth2-proxy
+ip_addr_group:
+  ip_addresses:
+  - ip: 10.0.0.20
+    port: 4180
+health_check:
+  tcp_health_check: {}
+---
+kind: backend
+name: app
+ip_addr_group:
+  ip_addresses:
+  - ip: 10.0.0.10
+    port: 8080
+health_check:
+  tcp_health_check: {}
+---
+kind: vs
+name: app
+port: 80
+http_routes_config:
+  external_auths:
+  - name: sso
+    backend_uuid: name:oauth2-proxy
+    path: /
+    request_headers: [cookie, accept]
+    upstream_headers: [x-auth-request-user, x-auth-request-email]
+    client_headers: [set-cookie]
+  virtual_hosts:
+  - domains: [app.example.com]
+    external_auth: sso
+    routes:
+    - name: oauth2
+      match: {prefix: /oauth2/}
+      backend_uuid: name:oauth2-proxy
+      external_auth_disabled: true
+    - name: default
+      match: {prefix: /}
+      backend_uuid: name:app

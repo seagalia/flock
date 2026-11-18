@@ -1,0 +1,82 @@
+version: "2"
+run:
+  allow-parallel-runners: true
+linters:
+  enable:
+    - zerologlint
+    - copyloopvar
+    - depguard
+    - errcheck
+    - ginkgolinter
+    - gocyclo
+    - govet
+    - ineffassign
+    - modernize
+    - misspell
+    - nakedret
+    - prealloc
+    - revive
+    - staticcheck
+    - unconvert
+    - unparam
+    - unused
+    - logcheck
+  settings:
+    custom:
+      logcheck:
+        type: "module"
+        description: Checks Go logging calls for Kubernetes logging conventions.
+    errcheck:
+      exclude-functions:
+        - io/ioutil.ReadFile
+        - io.WriteString
+        - (*github.com/cespare/xxhash/v2.Digest).WriteString
+        - (*github.com/cespare/xxhash/v2.Digest).Write
+        - (net/http.ResponseWriter).Write
+        - github.com/prometheus/common/expfmt.MetricFamilyToText
+        # the cli prints to the terminal best effort
+        - github.com/ArthurHlt/messages.Printfln
+        - (github.com/ArthurHlt/messages.Spinner).Start
+        - (github.com/ArthurHlt/messages.Spinner).Stop
+    staticcheck:
+      # same scope as golangci-lint v1, which did not run the stylecheck (ST) and quickfix (QF) checks by default
+      checks:
+        - all
+        - -ST*
+        - -QF*
+    misspell:
+      # the name of a lego dns provider
+      ignore-rules:
+        - internetbs
+    depguard:
+      rules:
+        forbid-sort-pkg:
+          deny:
+            - pkg: sort
+              desc: Should be replaced with slices package
+    revive:
+      rules:
+        - name: comment-spacings
+        - name: import-shadowing
+    modernize:
+      disable:
+        - omitzero
+  exclusions:
+    generated: lax
+    rules:
+      - linters:
+          - lll
+        path: api/*
+      - linters:
+          - dupl
+          - lll
+        path: internal/*
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling

@@ -1,0 +1,47 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - flock.seagalia.io
+  resources:
+  - backends
+  - certificates
+  - instances
+  - vips
+  - virtualservers
+  - zones
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - flock.seagalia.io
+  resources:
+  - backends/finalizers
+  - certificates/finalizers
+  - instances/finalizers
+  - vips/finalizers
+  - virtualservers/finalizers
+  - zones/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - flock.seagalia.io
+  resources:
+  - backends/status
+  - certificates/status
+  - instances/status
+  - vips/status
+  - virtualservers/status
+  - zones/status
+  verbs:
+  - get
+  - patch
+  - update

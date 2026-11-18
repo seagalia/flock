@@ -1,0 +1,346 @@
+{
+  "Items": [
+    {
+      "Id": "aaecd6de9f231daf870b6bfc92b7fe20a0d896a18425d2689dae295bbe3ff11b",
+      "Names": [
+        "/flock-dev-privileged-whoami-1-1"
+      ],
+      "Image": "traefik/whoami:latest",
+      "ImageID": "sha256:c4717a8d1f0134a7444e24f881160e033991f23027c6c5a9a3f8fd22e70d1d44",
+      "ImageManifestDescriptor": {
+        "mediaType": "application/vnd.oci.image.manifest.v1+json",
+        "digest": "sha256:fb8458a97e9695115b0367e5ecf2a1a72de48b306acccccd01455b46334d2300",
+        "size": 863,
+        "platform": {
+          "architecture": "arm64",
+          "os": "linux"
+        }
+      },
+      "Command": "/whoami --name whoami-1",
+      "Created": 1794098562,
+      "Ports": [
+        {
+          "IP": "",
+          "PrivatePort": 80,
+          "Type": "tcp"
+        }
+      ],
+      "Labels": {
+        "com.docker.compose.config-hash": "ff1694a5e4df923e31d29a1e6d9eebb4db8bf8e04923c94eca85f211fdece5ac",
+        "com.docker.compose.container-number": "1",
+        "com.docker.compose.depends_on": "",
+        "com.docker.compose.image": "sha256:fb8458a97e9695115b0367e5ecf2a1a72de48b306acccccd01455b46334d2300",
+        "com.docker.compose.oneoff": "False",
+        "com.docker.compose.project": "flock-dev-privileged",
+        "com.docker.compose.replace": "whoami-1-1",
+        "com.docker.compose.service": "whoami-1",
+        "com.docker.compose.version": "5.6.1",
+        "io.seagalia.flock.service": "whoami-1",
+        "org.opencontainers.image.created": "2026-07-29T15:40:56Z",
+        "org.opencontainers.image.description": "Tiny Go webserver that prints OS information and HTTP request to output",
+        "org.opencontainers.image.documentation": "https://github.com/traefik/whoami",
+        "org.opencontainers.image.revision": "1ce75d01b6978863647da42557a707a479da3a51",
+        "org.opencontainers.image.source": "https://github.com/traefik/whoami",
+        "org.opencontainers.image.title": "whoami",
+        "org.opencontainers.image.url": "https://github.com/traefik/whoami",
+        "org.opencontainers.image.version": "1.12.0",
+        "io.seagalia.flock.enable": "true"
+      },
+      "State": "running",
+      "Status": "Up 25 seconds",
+      "HostConfig": {
+        "NetworkMode": "flock-dev-privileged_default"
+      },
+      "NetworkSettings": {
+        "Networks": {
+          "flock-dev-privileged_default": {
+            "IPAMConfig": null,
+            "Links": null,
+            "Aliases": null,
+            "DriverOpts": null,
+            "GwPriority": 0,
+            "NetworkID": "313a5a3f70d18cef6ad0b79ae6a8692697466a8f7ae7bd105ee1a8ba577bf915",
+            "EndpointID": "d54580f0792f99a949593fbadf86999dab70665e336e1a1583f252b174201a5d",
+            "Gateway": "172.18.0.1",
+            "IPAddress": "172.18.0.2",
+            "MacAddress": "c2:18:09:8f:82:b0",
+            "IPPrefixLen": 16,
+            "IPv6Gateway": "",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "DNSNames": null
+          }
+        }
+      },
+      "Mounts": []
+    },
+    {
+      "Id": "eb2d05d7a9f31977eb5ed5df4fa35cf19f9eacd8c9a02bcacd5e515627f6f6f7",
+      "Names": [
+        "/flock-dev-privileged-whoami-1-2"
+      ],
+      "Image": "traefik/whoami:latest",
+      "ImageID": "sha256:c4717a8d1f0134a7444e24f881160e033991f23027c6c5a9a3f8fd22e70d1d44",
+      "ImageManifestDescriptor": {
+        "mediaType": "application/vnd.oci.image.manifest.v1+json",
+        "digest": "sha256:fb8458a97e9695115b0367e5ecf2a1a72de48b306acccccd01455b46334d2300",
+        "size": 863,
+        "platform": {
+          "architecture": "arm64",
+          "os": "linux"
+        }
+      },
+      "Command": "/whoami --name whoami-1",
+      "Created": 1794098562,
+      "Ports": [
+        {
+          "IP": "",
+          "PrivatePort": 80,
+          "Type": "tcp"
+        }
+      ],
+      "Labels": {
+        "com.docker.compose.config-hash": "ff1694a5e4df923e31d29a1e6d9eebb4db8bf8e04923c94eca85f211fdece5ac",
+        "com.docker.compose.container-number": "2",
+        "com.docker.compose.depends_on": "",
+        "com.docker.compose.image": "sha256:fb8458a97e9695115b0367e5ecf2a1a72de48b306acccccd01455b46334d2300",
+        "com.docker.compose.oneoff": "False",
+        "com.docker.compose.project": "flock-dev-privileged",
+        "com.docker.compose.replace": "whoami-1-2",
+        "com.docker.compose.service": "whoami-1",
+        "com.docker.compose.version": "5.6.1",
+        "io.seagalia.flock.service": "whoami-1",
+        "org.opencontainers.image.created": "2026-07-29T15:40:56Z",
+        "org.opencontainers.image.description": "Tiny Go webserver that prints OS information and HTTP request to output",
+        "org.opencontainers.image.documentation": "https://github.com/traefik/whoami",
+        "org.opencontainers.image.revision": "1ce75d01b6978863647da42557a707a479da3a51",
+        "org.opencontainers.image.source": "https://github.com/traefik/whoami",
+        "org.opencontainers.image.title": "whoami",
+        "org.opencontainers.image.url": "https://github.com/traefik/whoami",
+        "org.opencontainers.image.version": "1.12.0",
+        "io.seagalia.flock.enable": "true"
+      },
+      "State": "running",
+      "Status": "Up 25 seconds",
+      "HostConfig": {
+        "NetworkMode": "flock-dev-privileged_default"
+      },
+      "NetworkSettings": {
+        "Networks": {
+          "flock-dev-privileged_default": {
+            "IPAMConfig": null,
+            "Links": null,
+            "Aliases": null,
+            "DriverOpts": null,
+            "GwPriority": 0,
+            "NetworkID": "313a5a3f70d18cef6ad0b79ae6a8692697466a8f7ae7bd105ee1a8ba577bf915",
+            "EndpointID": "17fbe4559b3691e689d9e78db71a059eea9e36cb27802ce0cba2408cf7d2acdc",
+            "Gateway": "172.18.0.1",
+            "IPAddress": "172.18.0.3",
+            "MacAddress": "3a:d3:64:aa:20:12",
+            "IPPrefixLen": 16,
+            "IPv6Gateway": "",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "DNSNames": null
+          }
+        }
+      },
+      "Mounts": []
+    },
+    {
+      "Id": "56d05a9f1a1df1bb54381263e32421cf2af08fc7dfa3651248242ce82739ccfb",
+      "Names": [
+        "/flock-dev-privileged-whoami-2-1"
+      ],
+      "Image": "traefik/whoami:latest",
+      "ImageID": "sha256:c4717a8d1f0134a7444e24f881160e033991f23027c6c5a9a3f8fd22e70d1d44",
+      "ImageManifestDescriptor": {
+        "mediaType": "application/vnd.oci.image.manifest.v1+json",
+        "digest": "sha256:fb8458a97e9695115b0367e5ecf2a1a72de48b306acccccd01455b46334d2300",
+        "size": 863,
+        "platform": {
+          "architecture": "arm64",
+          "os": "linux"
+        }
+      },
+      "Command": "/whoami --name whoami-2",
+      "Created": 1794011803,
+      "Ports": [
+        {
+          "IP": "",
+          "PrivatePort": 80,
+          "Type": "tcp"
+        }
+      ],
+      "Labels": {
+        "com.docker.compose.config-hash": "9b8d74657dbaa5e15bf46e228d8ab3d1bdcb1beff0c8bf50774d14dd428df593",
+        "com.docker.compose.container-number": "1",
+        "com.docker.compose.depends_on": "",
+        "com.docker.compose.image": "sha256:fb8458a97e9695115b0367e5ecf2a1a72de48b306acccccd01455b46334d2300",
+        "com.docker.compose.oneoff": "False",
+        "com.docker.compose.project": "flock-dev-privileged",
+        "com.docker.compose.service": "whoami-2",
+        "com.docker.compose.version": "5.6.1",
+        "org.opencontainers.image.created": "2026-07-29T15:40:56Z",
+        "org.opencontainers.image.description": "Tiny Go webserver that prints OS information and HTTP request to output",
+        "org.opencontainers.image.documentation": "https://github.com/traefik/whoami",
+        "org.opencontainers.image.revision": "1ce75d01b6978863647da42557a707a479da3a51",
+        "org.opencontainers.image.source": "https://github.com/traefik/whoami",
+        "org.opencontainers.image.title": "whoami",
+        "org.opencontainers.image.url": "https://github.com/traefik/whoami",
+        "org.opencontainers.image.version": "1.12.0",
+        "io.seagalia.flock.enable": "true"
+      },
+      "State": "running",
+      "Status": "Up About a minute",
+      "HostConfig": {
+        "NetworkMode": "flock-dev-privileged_lb"
+      },
+      "NetworkSettings": {
+        "Networks": {
+          "flock-dev-privileged_lb": {
+            "IPAMConfig": {
+              "IPv4Address": "172.30.90.22"
+            },
+            "Links": null,
+            "Aliases": null,
+            "DriverOpts": null,
+            "GwPriority": 0,
+            "NetworkID": "9e74075d43ec166e3216e4f23189e387e9ce8cc7528bed2ce90378e425f7d6ef",
+            "EndpointID": "5e6b8af6faad661a110e5d3e712adea77f941a13962f8fe07ca0cba04afd5d1f",
+            "Gateway": "172.30.90.1",
+            "IPAddress": "172.30.90.22",
+            "MacAddress": "72:d3:79:65:c1:d9",
+            "IPPrefixLen": 24,
+            "IPv6Gateway": "",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "DNSNames": null
+          }
+        }
+      },
+      "Mounts": []
+    },
+    {
+      "Id": "f01cab556eee89c6f4e6412cba2d049878a4b02e439c4d748434c87df5caeee0",
+      "Names": [
+        "/flock-dev-privileged-flock-1"
+      ],
+      "Image": "flock:dev",
+      "ImageID": "sha256:ed7e57125478977afa09c88c8b351c84d5fde56c7fd380abf708f97f58ba327d",
+      "ImageManifestDescriptor": {
+        "mediaType": "application/vnd.oci.image.manifest.v1+json",
+        "digest": "sha256:ed7e57125478977afa09c88c8b351c84d5fde56c7fd380abf708f97f58ba327d",
+        "size": 2697,
+        "platform": {
+          "architecture": "arm64",
+          "os": "linux"
+        }
+      },
+      "Command": "flock dev --data-dir=/var/lib/flock --listen-host=0.0.0.0 --envoy-path=/usr/local/bin/envoy --no-browser --privileged --yes",
+      "Created": 1794011803,
+      "Ports": [
+        {
+          "IP": "",
+          "PrivatePort": 10000,
+          "Type": "tcp"
+        },
+        {
+          "IP": "0.0.0.0",
+          "PrivatePort": 8080,
+          "PublicPort": 8080,
+          "Type": "tcp"
+        },
+        {
+          "IP": "::",
+          "PrivatePort": 8080,
+          "PublicPort": 8080,
+          "Type": "tcp"
+        },
+        {
+          "IP": "0.0.0.0",
+          "PrivatePort": 8081,
+          "PublicPort": 8081,
+          "Type": "tcp"
+        },
+        {
+          "IP": "::",
+          "PrivatePort": 8081,
+          "PublicPort": 8081,
+          "Type": "tcp"
+        },
+        {
+          "IP": "0.0.0.0",
+          "PrivatePort": 8443,
+          "PublicPort": 8443,
+          "Type": "tcp"
+        },
+        {
+          "IP": "::",
+          "PrivatePort": 8443,
+          "PublicPort": 8443,
+          "Type": "tcp"
+        }
+      ],
+      "Labels": {
+        "com.docker.compose.config-hash": "3177b36592b5cf4dbd1c98706898616e4a78d743cbbc6b56ec81fe8ebf98a4bd",
+        "com.docker.compose.container-number": "1",
+        "com.docker.compose.depends_on": "",
+        "com.docker.compose.image": "sha256:ed7e57125478977afa09c88c8b351c84d5fde56c7fd380abf708f97f58ba327d",
+        "com.docker.compose.image.builder": "classic",
+        "com.docker.compose.oneoff": "False",
+        "com.docker.compose.project": "flock-dev-privileged",
+        "com.docker.compose.service": "flock",
+        "com.docker.compose.version": "5.6.1",
+        "org.opencontainers.image.version": "22.04"
+      },
+      "State": "running",
+      "Status": "Up About a minute",
+      "HostConfig": {
+        "NetworkMode": "flock-dev-privileged_lb"
+      },
+      "NetworkSettings": {
+        "Networks": {
+          "flock-dev-privileged_lb": {
+            "IPAMConfig": null,
+            "Links": null,
+            "Aliases": null,
+            "DriverOpts": null,
+            "GwPriority": 0,
+            "NetworkID": "9e74075d43ec166e3216e4f23189e387e9ce8cc7528bed2ce90378e425f7d6ef",
+            "EndpointID": "85eabe7ba205fffca7fc6ce74d8584eef0a2d58980a86223403cf1dbacf2c2d6",
+            "Gateway": "172.30.90.1",
+            "IPAddress": "172.30.90.2",
+            "MacAddress": "6e:03:5a:e5:02:80",
+            "IPPrefixLen": 24,
+            "IPv6Gateway": "",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "DNSNames": null
+          }
+        }
+      },
+      "Mounts": [
+        {
+          "Type": "volume",
+          "Name": "flock-dev-privileged_flock-data",
+          "Source": "/var/lib/docker/volumes/flock-dev-privileged_flock-data/_data",
+          "Destination": "/var/lib/flock",
+          "Driver": "local",
+          "Mode": "rw",
+          "RW": true,
+          "Propagation": ""
+        },
+        {
+          "Type": "bind",
+          "Source": "/srv/flock/resources.yml",
+          "Destination": "/etc/flock/resources.yml",
+          "Mode": "ro",
+          "RW": false,
+          "Propagation": "rprivate"
+        }
+      ]
+    }
+  ]
+}

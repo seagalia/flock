@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package flock.services.agent.status.v1;
+
+import "buf/validate/validate.proto";
+import "flock/type/v1/note.proto";
+import "google/protobuf/any.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/services/agent/status/v1;agentstatus";
+
+// GetStatusRequest is the request message for the GetStatus method.
+message GetStatusRequest {
+  // The type URL of the resource, one of those ListResourceTypes gives.
+  string type_url = 1 [(buf.validate.field).string = {min_len: 1}];
+  // The uuid of the resource. For flock.api.config.backend.v1.BackendEndpointStats it is the uuid of the backend.
+  string identifier = 2 [(buf.validate.field).string = {min_len: 1}];
+}
+
+// StatusResponse is the status of one resource on the agent, the response message for the GetStatus method.
+message StatusResponse {
+  // The version of the resource the agent held before the last one it received, or the received one when it is the
+  // first. For BackendEndpointStats it is the endpoint stats of the backend.
+  google.protobuf.Any previous_resource = 1;
+  // The version of the resource being applied or that failed to apply when the agent knows it, empty once it is
+  // applied. For BackendEndpointStats it is the endpoint stats of the backend.
+  google.protobuf.Any errored_resource = 2;
+  // State is where the agent is in applying the resource.
+  enum State {
+    // The resource is applied.
+    OK = 0;
+    // The agent is adding or updating the resource.
+    ADDING = 1;
+    // The agent is removing the resource.
+    REMOVING = 2;
+    // Applying the resource failed, error gives why. For BackendEndpointStats, some endpoints are unhealthy.
+    ERRORED = 3;
+    // The agent has no state for the resource.
+    UNKNOWN = 4;
+  }
+  // The current state of the resource.
+  State state = 3;
+  // Why the resource failed to apply when state is ERRORED, empty otherwise.
+  string error = 4;
+  // Notes the agent gives on how it applied the resource, for example an approximation or the engine serving it.
+  // The resource is applied with them.
+  repeated flock.type.v1.Note notes = 5;
+}
+
+// ListStatusRequest is the request message for the ListStatus method.
+message ListStatusRequest {
+  // The type URL of the resources, one of those ListResourceTypes gives.
+  string type_url = 1 [(buf.validate.field).string = {min_len: 1}];
+}
+
+// ListStatusResponse is the response message for the ListStatus method.
+message ListStatusResponse {
+  // The status of each resource of the type the agent holds.
+  repeated StatusResponse statuses = 1;
+}
+
+// ListResourceTypesResponse is the response message for the ListResourceTypes method.
+message ListResourceTypesResponse {
+  // The type URLs of the resources for which the status can be requested.
+  repeated string resource_types = 1;
+}
+
+// ResourceStatus is the agent service giving the status of the resources the agent applies, the controller calls it
+// for the Lookup service.
+service ResourceStatus {
+  // ListStatus returns the status of every resource of a type the agent holds.
+  rpc ListStatus(ListStatusRequest) returns (ListStatusResponse) {}
+  // GetStatus returns the status of a resource, NotFound when the agent doesn't hold it.
+  rpc GetStatus(GetStatusRequest) returns (StatusResponse) {}
+  // ListResourceTypes returns the type URLs of the resources for which the status can be requested.
+  rpc ListResourceTypes(google.protobuf.Empty) returns (ListResourceTypesResponse) {}
+}

@@ -1,0 +1,53 @@
+<main class="login">
+  <section class="card">
+    @if (busy()) {
+      <mat-progress-bar mode="indeterminate" class="progress" />
+    }
+    <img
+      class="lockup"
+      [src]="theme.isDark() ? 'brand/lockup-dark.svg' : 'brand/lockup.svg'"
+      alt="Flock"
+      width="280"
+      height="120"
+    />
+    <p class="tagline">Flexible load balancer orchestrator</p>
+
+    @if (isPasswordLogin()) {
+      <form class="form" (ngSubmit)="loginWithPassword()">
+        <mat-form-field subscriptSizing="dynamic">
+          <mat-label>Username</mat-label>
+          <input matInput name="username" autocomplete="username" required [(ngModel)]="username" />
+        </mat-form-field>
+        <mat-form-field subscriptSizing="dynamic">
+          <mat-label>Password</mat-label>
+          <input
+            matInput
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            required
+            [(ngModel)]="password"
+          />
+        </mat-form-field>
+        <button mat-flat-button type="submit" [disabled]="busy()">
+          <mat-icon>login</mat-icon>
+          Sign in
+        </button>
+      </form>
+    }
+
+    @if (oidcIssuerHost()) {
+      <button mat-flat-button type="button" [disabled]="busy()" (click)="loginWithOidc()">
+        <mat-icon>login</mat-icon>
+        Sign in with {{ oidcIssuerHost() }}
+      </button>
+    }
+
+    @if (error()) {
+      <p class="error" role="alert">
+        <mat-icon>error</mat-icon>
+        {{ error() }}
+      </p>
+    }
+  </section>
+</main>

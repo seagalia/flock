@@ -1,0 +1,2245 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.22.0
+  name: virtualservers.flock.seagalia.io
+spec:
+  group: flock.seagalia.io
+  names:
+    kind: VirtualServer
+    listKind: VirtualServerList
+    plural: virtualservers
+    singular: virtualserver
+  scope: Cluster
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: VirtualServer is the flock virtual server of the same name, its
+          spec converted by ToProto.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: spec defines the desired state of VirtualServer
+            properties:
+              enableL3Log:
+                description: |-
+                  Set to true to log tcp syn packets and udp packets (for udp virtual server)
+                  This log will give source ip, source port, destination ip, destination port and the protocol used.
+                  It is off by default because it can produce a lot of logs.
+                  On udp, each packet produces a log line, which can be a lot of logs and can have a performance impact.
+                  On a port shared by several virtual servers of a VIP, enabling it on one of them logs the whole port.
+                  It only works on agent implementations that support it.
+                type: boolean
+              httpRoutesConfig:
+                description: HTTP Route configuration
+                properties:
+                  acceptProxyProtocol:
+                    description: |-
+                      Read a proxy protocol header (v1 or v2) sent by the client before anything else:
+                      the client address it holds becomes the client address of the connection.
+                      Connections without the header are refused.
+                    type: boolean
+                  externalAuths:
+                    description: |-
+                      External auth policies of the virtual server, which virtual hosts and routes pick by name. The controller refuses
+                      a policy name defined twice, and a virtual host or route naming a policy not defined here.
+                    items:
+                      description: |-
+                        ExternalAuth asks an auth service whether a request may pass, before it reaches its backend. The auth service gets
+                        a request with no body on the path of the policy and the method of the original request. It allows the request by
+                        answering exactly 200. Any other status below 500 denies it, and the client gets that status and body. A 5xx, a
+                        timeout, a connection error or an unreadable answer follows failure_mode.
+                        Header names are lowercased by the defaults. Every inbound header named in the upstream_headers of any policy of the
+                        virtual server is removed from the requests of all its routes, checked or not, so a client can't spoof a header the
+                        auth service is trusted to set.
+                      properties:
+                        backendRef:
+                          description: |-
+                            UUID of the backend serving the auth service. Its TLS, discovery, health checks and load balancing apply.
+                            The controller refuses a backend that doesn't exist.
+                          properties:
+                            name:
+                              description: name of the object.
+                              maxLength: 253
+                              minLength: 1
+                              pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        clientHeaders:
+                          description: |-
+                            Headers of a deny response sent to the client, on top of location and www-authenticate which are always sent.
+                            An empty list sends nothing else.
+                          items:
+                            maxLength: 256
+                            pattern: ^:?[0-9a-zA-Z!#$%&'*+.\-^_|~\x60]+$
+                            type: string
+                          maxItems: 64
+                          type: array
+                          x-kubernetes-list-type: atomic
+                        failureMode:
+                          description: What happens when the auth service can't answer.
+                            Default to DENY.
+                          enum:
+                          - Deny
+                          - Allow
+                          type: string
+                        name:
+                          description: Name of the policy, unique in the virtual server,
+                            referenced by virtual hosts and routes.
+                          maxLength: 63
+                          minLength: 1
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                          type: string
+                        path:
+                          description: Exact path of the check request, the path of
+                            the original request is never appended to it.
+                          maxLength: 2048
+                          type: string
+                          x-kubernetes-validations:
+                          - message: must start with "/"
+                            rule: self.startsWith("/")
+                        requestHeaders:
+                          description: |-
+                            Headers of the client request forwarded to the auth service, with all their values. The authorization header is
+                            always forwarded. The original method, host, uri and protocol are sent in the x-forwarded-method, x-forwarded-host,
+                            x-forwarded-uri and x-forwarded-proto headers, and x-forwarded-for holds only the client address the agent sees,
+                            never the value the client sent. These headers are set on the check request only, never on the backend request.
+                            An empty list forwards nothing else: there is no implicit pass-all.
+                          items:
+                            maxLength: 256
+                            pattern: ^:?[0-9a-zA-Z!#$%&'*+.\-^_|~\x60]+$
+                            type: string
+                          maxItems: 64
+                          type: array
+                          x-kubernetes-list-type: atomic
+                        statusOnError:
+                          description: |-
+                            Status sent to the client, with an empty body, when the auth service can't answer and failure_mode is DENY.
+                            Only the HTTP statuses every dataplane can answer are accepted: 400 to 417, 421 to 424, 426, 428, 429, 431, 500 to
+                            508, 510 and 511. Default to 503.
+                          enum:
+                          - 400
+                          - 401
+                          - 402
+                          - 403
+                          - 404
+                          - 405
+                          - 406
+                          - 407
+                          - 408
+                          - 409
+                          - 410
+                          - 411
+                          - 412
+                          - 413
+                          - 414
+                          - 415
+                          - 416
+                          - 417
+                          - 421
+                          - 422
+                          - 423
+                          - 424
+                          - 426
+                          - 428
+                          - 429
+                          - 431
+                          - 500
+                          - 501
+                          - 502
+                          - 503
+                          - 504
+                          - 505
+                          - 506
+                          - 507
+                          - 508
+                          - 510
+                          - 511
+                          format: int32
+                          minimum: 0
+                          type: integer
+                        timeoutMilliseconds:
+                          description: Budget of the whole check (connect, send and
+                            read of the response), up to 30s. Default to 1s.
+                          exclusiveMinimum: true
+                          format: int32
+                          maximum: 30000
+                          minimum: 0
+                          type: integer
+                        upstreamHeaders:
+                          description: |-
+                            Headers of an allow response set, replacing any value, on the request sent to the backend. An empty list sets
+                            nothing. Host, pseudo headers and hop by hop headers are refused.
+                          items:
+                            maxLength: 256
+                            pattern: ^:?[0-9a-zA-Z!#$%&'*+.\-^_|~\x60]+$
+                            type: string
+                            x-kubernetes-validations:
+                            - message: host, pseudo headers and hop by hop headers
+                                can't be set on the upstream request
+                              rule: '!(self in [''host'', ''connection'', ''transfer-encoding'',
+                                ''te'', ''upgrade'', ''keep-alive'', ''proxy-connection'',
+                                ''trailer'', ''content-length'']) && !self.startsWith('':'')'
+                          maxItems: 64
+                          type: array
+                          x-kubernetes-list-type: atomic
+                      required:
+                      - backendRef
+                      - name
+                      - path
+                      type: object
+                    maxItems: 16
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - name
+                    x-kubernetes-list-type: map
+                  typedOptions:
+                    description: |-
+                      Extension point for custom options dedicated to a load balancer implementation.
+                      valid extensions are:
+                      - flock.extensions.vs.starling_options.v1.HttpOptions
+                      - flock.extensions.vs.f5_options.v1.VirtualServerOptions
+                    properties:
+                      f5:
+                        description: |-
+                          VirtualServerOptions holds the F5 agent options of a virtual server, packed in the `typed_options` field of the
+                          tcp, udp, http or tls over tcp route config of `flock.api.config.vs.v1.VirtualServer`.
+
+                          Every string field naming a BIG-IP object takes the full path of an object that already exists on the BIG-IP, for
+                          example `/Common/my_irule`. The agent never creates nor changes those objects. A path to a missing object makes the
+                          BIG-IP refuse the partition of the virtual server, reported as an error on the virtual server.
+                        properties:
+                          auto:
+                            description: Translate to a self IP of the BIG-IP (automap).
+                            type: boolean
+                          clientTLSProfile:
+                            description: |-
+                              Client SSL profile, facing the clients, replacing the one the agent builds from the certificates of the virtual
+                              server.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          fallbackPersistenceProfile:
+                            description: Persistence profile used when the persistence
+                              profile can't find a record.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          httpProfile:
+                            description: HTTP profile of an http virtual server, replacing
+                              the default one.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          irules:
+                            description: iRules attached to the virtual server after
+                              the iRules the agent generates.
+                            items:
+                              maxLength: 255
+                              pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                              type: string
+                            maxItems: 64
+                            type: array
+                            x-kubernetes-list-type: atomic
+                          none:
+                            description: Keep the client address. The endpoints must
+                              route their answers back through the BIG-IP.
+                            type: boolean
+                          persistenceProfile:
+                            description: |-
+                              Persistence profile of the virtual server. Without it the virtual server has no persistence, unless its backend
+                              uses a consistent hash lb_policy.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          pool:
+                            description: Translate to the addresses of an existing
+                              SNAT pool, given by full path.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          serverTLSProfile:
+                            description: Server SSL profile, facing the endpoints,
+                              replacing the one the agent builds from the TLS settings
+                              of the backend.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          tcpProfile:
+                            description: TCP profile, replacing the default one, for
+                              tcp, http and tls over tcp virtual servers.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          udpProfile:
+                            description: UDP profile, replacing the default one, for
+                              udp virtual servers.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          wafPolicy:
+                            description: WAF (Advanced WAF) policy of the virtual
+                              server.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                        type: object
+                        x-kubernetes-validations:
+                        - message: at most one of auto, none, pool can be set
+                          rule: '[has(self.auto), has(self.none), has(self.pool)].filter(x,
+                            x).size() <= 1'
+                      starling:
+                        description: |-
+                          HttpOptions holds the starling agent options of an http virtual server, packed in the `typed_options` field of
+                          `flock.api.config.vs.v1.HttpRoutesConfig`. They configure the envoy HTTP connection manager serving the virtual
+                          server, so they apply to every virtual host of it.
+
+                          Virtual servers sharing a port of a VIP must all have the same `disable_snat` and `disable_dnat`, because they apply
+                          to the whole port. A virtual server that differs is not served on the port.
+                        properties:
+                          codecType:
+                            description: CodecType is the HTTP version accepted from
+                              clients, AUTO by default.
+                            enum:
+                            - Auto
+                            - HTTP1
+                            - HTTP2
+                            type: string
+                          commonHTTPProtocolOptions:
+                            description: |-
+                              CommonHttpProtocolOptions apply to the client connections, whatever their HTTP version. The idle timeout is 1 hour
+                              when unset. Requests with an underscore in a header name are always rejected.
+                            properties:
+                              idleTimeoutMilliseconds:
+                                description: |-
+                                  IdleTimeout closes a connection after this time without any active request. HTTP/2 PINGs don't keep the connection
+                                  alive. It is 1 hour when unset, and 0 disables it, which may leak connections whose TCP FIN was lost. An HTTP/2
+                                  client connection is drained before it is closed.
+                                format: int32
+                                type: integer
+                              maxConnectionDurationMilliseconds:
+                                description: |-
+                                  MaxConnectionDuration closes a connection this long after it was established. A connection without active stream
+                                  is closed at once, a client connection with active streams is drained first and closed at the end of the drain.
+                                  There is no maximum when unset.
+                                format: int32
+                                type: integer
+                              maxHeadersCount:
+                                description: |-
+                                  MaxHeadersCount is the maximum number of headers of a request, 100 when unset. A request with more headers is
+                                  answered 431 in HTTP/1 and its stream is reset in HTTP/2.
+                                format: int32
+                                minimum: 1
+                                type: integer
+                              maxRequestsPerConnection:
+                                description: |-
+                                  MaxRequestsPerConnection is the maximum number of requests sent over one connection, no limit when unset. 1
+                                  disables keep alive. In HTTP/2 and HTTP/3 the limit is approximate because streams run concurrently.
+                                format: int32
+                                minimum: 0
+                                type: integer
+                              maxStreamDurationMilliseconds:
+                                description: |-
+                                  MaxStreamDuration resets a stream this long after it started, whatever the other timeouts. There is no maximum
+                                  when unset.
+                                format: int32
+                                type: integer
+                            required:
+                            - maxHeadersCount
+                            type: object
+                          disableDnat:
+                            description: DisableDnat adds envoy's `original_dst` listener
+                              filter.
+                            type: boolean
+                          disableSnat:
+                            description: |-
+                              DisableSnat adds envoy's `original_src` listener filter, so envoy connects to the backends with the client address
+                              as source and the backends must route their replies back through the agent. The agent setting
+                              `advertisement.disable_snat` has the same effect on every envoy listener.
+                            type: boolean
+                          http2ProtocolOptions:
+                            description: |-
+                              Http2ProtocolOptions apply to the HTTP/2 client connections. When unset, or for the fields left unset, the agent
+                              uses at most 1000000 concurrent streams, an initial stream window of 65536 bytes and an initial connection window
+                              of 1048576 bytes.
+                            properties:
+                              allowConnect:
+                                description: AllowConnect allows proxying websockets
+                                  and other upgrades over HTTP/2 CONNECT.
+                                type: boolean
+                              connectionKeepalive:
+                                description: ConnectionKeepalive sends PING frames
+                                  to check the connection, and closes it when the
+                                  peer doesn't answer in time.
+                                properties:
+                                  connectionIdleIntervalMilliseconds:
+                                    description: |-
+                                      ConnectionIdleInterval would send a PING before a new stream on a connection idle for this long. The starling
+                                      agent doesn't pass it to envoy, so it has no effect.
+                                    format: int32
+                                    minimum: 1
+                                    type: integer
+                                  intervalMilliseconds:
+                                    description: Interval is the period of the PING
+                                      frames, at least 1ms. No periodic PING is sent
+                                      when unset.
+                                    format: int32
+                                    minimum: 1
+                                    type: integer
+                                  timeoutMilliseconds:
+                                    description: |-
+                                      Timeout is how long to wait for the answer to a PING before closing the connection, at least 1ms. Any frame
+                                      received on the connection extends the wait, so head-of-line blocking doesn't close a healthy connection.
+                                    format: int32
+                                    minimum: 1
+                                    type: integer
+                                required:
+                                - connectionIdleIntervalMilliseconds
+                                - intervalMilliseconds
+                                - timeoutMilliseconds
+                                type: object
+                              hpackTableSize:
+                                description: |-
+                                  HpackTableSize is the maximum size in bytes of the HPACK dynamic table the encoder may use
+                                  (https://httpwg.org/specs/rfc7541.html#rfc.section.4.2), 4096 when unset. 0 disables header compression.
+                                format: int32
+                                minimum: 0
+                                type: integer
+                              initialConnectionWindowSize:
+                                description: |-
+                                  InitialConnectionWindowSize is the initial flow control window of a connection in bytes, from 65535 to 2147483647.
+                                  The starling agent uses 1048576 when unset.
+                                format: int32
+                                maximum: 2147483647
+                                minimum: 65535
+                                type: integer
+                              initialStreamWindowSize:
+                                description: |-
+                                  InitialStreamWindowSize is the initial flow control window of a stream in bytes
+                                  (https://httpwg.org/specs/rfc7540.html#rfc.section.6.9.2), from 65535 to 2147483647. The starling agent uses 65536
+                                  when unset. It also bounds the bytes envoy buffers per stream in its HTTP/2 codec.
+                                format: int32
+                                maximum: 2147483647
+                                minimum: 65535
+                                type: integer
+                              maxConcurrentStreams:
+                                description: |-
+                                  MaxConcurrentStreams is the maximum number of concurrent streams of one connection
+                                  (https://httpwg.org/specs/rfc7540.html#rfc.section.5.1.2), from 1 to 2147483647. When unset it is 1000000 for the
+                                  client connections of an http virtual server, and 2147483647 toward a backend.
+
+                                  Toward a backend it also limits the streams envoy opens on one connection. Over the limit, envoy queues the
+                                  requests or opens more connections. Envoy lowers it on a connection when the backend announces a lower limit.
+                                format: int32
+                                maximum: 2147483647
+                                minimum: 1
+                                type: integer
+                              maxConsecutiveInboundFramesWithEmptyPayload:
+                                description: |-
+                                  MaxConsecutiveInboundFramesWithEmptyPayload is the maximum number of consecutive HEADERS, CONTINUATION and DATA
+                                  frames received with an empty payload and no end of stream flag, 1 when unset. Over it, envoy closes the connection
+                                  as a flood and counts it in `http2.inbound_empty_frames_flood`. 0 closes the connection on the first such frame.
+                                format: int32
+                                minimum: 0
+                                type: integer
+                              maxInboundPriorityFramesPerStream:
+                                description: |-
+                                  MaxInboundPriorityFramesPerStream limits the PRIORITY frames received, 100 when unset. Envoy closes the connection
+                                  as a flood, counted in `http2.inbound_priority_frames_flood`, when the PRIORITY frames received over its lifetime
+                                  exceed `max_inbound_priority_frames_per_stream * (1 + opened_streams)`. On a client connection `opened_streams`
+                                  grows when envoy receives the complete response headers from the backend. On a connection to a backend it grows
+                                  when envoy sends the HEADERS frame of a new stream.
+                                format: int32
+                                minimum: 0
+                                type: integer
+                              maxInboundWindowUpdateFramesPerDataFrameSent:
+                                description: |-
+                                  MaxInboundWindowUpdateFramesPerDataFrameSent limits the WINDOW_UPDATE frames received, 10 when unset. Envoy closes
+                                  the connection as a flood, counted in `http2.inbound_window_update_frames_flood`, when the WINDOW_UPDATE frames
+                                  received over its lifetime exceed
+                                  `5 + 2 * (opened_streams + max_inbound_window_update_frames_per_data_frame_sent * outbound_data_frames)`, with
+                                  `opened_streams` counted as for `max_inbound_priority_frames_per_stream`. 1 is enough for peers with basic flow
+                                  control, peers estimating the available bandwidth need at least 2.
+                                format: int32
+                                minimum: 1
+                                type: integer
+                              maxOutboundControlFrames:
+                                description: |-
+                                  MaxOutboundControlFrames is the maximum number of PING, SETTINGS and RST_STREAM frames waiting to be written to the
+                                  socket, 1000 when unset. Over it, envoy closes the connection as a flood and counts it in
+                                  `http2.outbound_control_flood`.
+                                format: int32
+                                minimum: 1
+                                type: integer
+                              maxOutboundFrames:
+                                description: |-
+                                  MaxOutboundFrames is the maximum number of frames of any type waiting to be written to the socket, 10000 when
+                                  unset. Over it, envoy closes the connection as a flood and counts it in `http2.outbound_flood`.
+                                format: int32
+                                minimum: 1
+                                type: integer
+                            required:
+                            - initialConnectionWindowSize
+                            - initialStreamWindowSize
+                            - maxConcurrentStreams
+                            - maxInboundWindowUpdateFramesPerDataFrameSent
+                            - maxOutboundControlFrames
+                            - maxOutboundFrames
+                            type: object
+                          http3ProtocolOptions:
+                            description: |-
+                              Http3ProtocolOptions is passed to envoy, but the listeners of the starling agent accept no HTTP/3 connection and
+                              `codec_type` has no HTTP/3 value, so it has no effect.
+                            properties:
+                              allowExtendedConnect:
+                                description: |-
+                                  AllowExtendedConnect allows proxying websockets and other upgrades over HTTP/3 CONNECT, with the headers of the
+                                  HTTP/2 extended CONNECT (RFC 8441) and the settings proposed for HTTP/3
+                                  (https://datatracker.ietf.org/doc/draft-ietf-httpbis-h3-websockets/), which is not an RFC yet.
+                                type: boolean
+                              overrideStreamErrorOnInvalidHTTPMessage:
+                                description: |-
+                                  OverrideStreamErrorOnInvalidHttpMessage only terminates the offending stream on an invalid HEADERS frame when
+                                  true. When false or unset, the whole connection is terminated.
+                                type: boolean
+                              quicProtocolOptions:
+                                description: QuicProtocolOptions are the QUIC options
+                                  of the connection.
+                                properties:
+                                  connectionKeepalive:
+                                    description: |-
+                                      ConnectionKeepalive probes the peer to get traffic back from it and push back the idle timeout of the connection.
+                                      When unset, a client connection sends a PING every 15s and a server connection doesn't probe.
+                                    properties:
+                                      initialIntervalMilliseconds:
+                                        description: |-
+                                          InitialInterval is the interval of the first probes, 0 or at least 1s. Each next probe waits exponentially longer,
+                                          up to `max_interval`. It should be shorter than the idle timeout of the connection and than `max_interval`. When
+                                          unset or 0, a server connection doesn't probe, and a client connection probes at `max_interval` (or the QUICHE
+                                          default) unless `max_interval` is 0.
+                                        format: int32
+                                        type: integer
+                                        x-kubernetes-validations:
+                                        - message: must be <= 0 or >= 1000
+                                          rule: self <= 0 || self >= 1000
+                                      maxIntervalMilliseconds:
+                                        description: |-
+                                          MaxInterval is the longest interval between two probes (PING or PATH_RESPONSE), 0 or at least 1s. It should be
+                                          shorter than the idle timeout of the connection. A client connection starts probing at this interval when
+                                          `initial_interval` is unset or 0. 0 disables probing, and the QUICHE default interval is used when unset.
+                                        format: int32
+                                        type: integer
+                                        x-kubernetes-validations:
+                                        - message: must be <= 0 or >= 1000
+                                          rule: self <= 0 || self >= 1000
+                                    type: object
+                                  initialConnectionWindowSize:
+                                    description: |-
+                                      InitialConnectionWindowSize is the initial flow control receive window of a connection in bytes, from 1 to
+                                      25165824, 65536 when unset.
+                                    format: int32
+                                    maximum: 25165824
+                                    minimum: 1
+                                    type: integer
+                                  initialStreamWindowSize:
+                                    description: |-
+                                      InitialStreamWindowSize is the initial flow control receive window of a stream in bytes
+                                      (https://tools.ietf.org/html/draft-ietf-quic-transport-34#section-4.1), from 1 to 16777216, 65536 when unset. It
+                                      also bounds the bytes envoy buffers per stream in the QUIC stream buffers.
+                                    format: int32
+                                    maximum: 16777216
+                                    minimum: 1
+                                    type: integer
+                                  maxConcurrentStreams:
+                                    description: MaxConcurrentStreams is the maximum
+                                      number of streams the client can negotiate per
+                                      connection, 100 when unset.
+                                    format: int32
+                                    minimum: 1
+                                    type: integer
+                                  numTimeoutsToTriggerPortMigration:
+                                    description: |-
+                                      NumTimeoutsToTriggerPortMigration is the number of QUIC path degrading timeouts (such as PTO) before a client
+                                      connection migrates to another port, from 0 to 5, 1 when unset. 0 disables the migration. It has no effect on
+                                      server connections.
+                                    format: int32
+                                    maximum: 5
+                                    minimum: 0
+                                    type: integer
+                                required:
+                                - initialConnectionWindowSize
+                                - initialStreamWindowSize
+                                - maxConcurrentStreams
+                                type: object
+                            type: object
+                          httpProtocolOptions:
+                            description: HttpProtocolOptions apply to the HTTP/1 client
+                              connections.
+                            properties:
+                              enableTrailers:
+                                description: |-
+                                  EnableTrailers proxies the HTTP/1 trailers, which are dropped otherwise. Envoy only sends trailers when it chunk
+                                  encodes the message, which happens when all of these hold:
+                                  - the request is HTTP/1.1
+                                  - the request is neither a HEAD request nor an HTTP upgrade
+                                  - the message is not the response to a HEAD request
+                                  - the message has no content-length header
+                                type: boolean
+                              sendFullyQualifiedURL:
+                                description: |-
+                                  SendFullyQualifiedUrl puts the scheme (inferred when missing) and the host (host or `:authority` header) before the
+                                  path in the request line sent to the backend. By default only the path is sent.
+                                type: boolean
+                            type: object
+                          requestHeadersToAdd:
+                            description: RequestHeadersToAdd are added to each request
+                              before it is sent to a backend, at most 1000.
+                            items:
+                              description: Header name/value pair plus option to control
+                                append behavior.
+                              properties:
+                                append:
+                                  description: |-
+                                    When true, the value is added next to the existing values of the header. When false (default), it replaces
+                                    them.
+                                  type: boolean
+                                header:
+                                  description: Header name/value pair that this option
+                                    applies to.
+                                  properties:
+                                    key:
+                                      description: Header name.
+                                      maxLength: 16384
+                                      minLength: 1
+                                      pattern: ^[^\x00\x0A\x0D]+$
+                                      type: string
+                                    value:
+                                      description: Header value.
+                                      maxLength: 16384
+                                      pattern: ^[^\x00\x0A\x0D]+$
+                                      type: string
+                                    valueFromSecret:
+                                      description: |-
+                                        Value of a secret, for a header carrying a credential such as `Authorization`. Agents send the value of the
+                                        secret, an empty value until they hold the secret.
+                                      properties:
+                                        key:
+                                          description: Key of the value in the data
+                                            of the secret.
+                                          maxLength: 253
+                                          minLength: 1
+                                          type: string
+                                        secretRef:
+                                          description: UUID of the secret.
+                                          properties:
+                                            name:
+                                              description: name of the object.
+                                              maxLength: 253
+                                              minLength: 1
+                                              pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                                              type: string
+                                          required:
+                                          - name
+                                          type: object
+                                      required:
+                                      - key
+                                      - secretRef
+                                      type: object
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-validations:
+                                  - message: at most one of value, valueFromSecret
+                                      can be set
+                                    rule: '[has(self.value), has(self.valueFromSecret)].filter(x,
+                                      x).size() <= 1'
+                              required:
+                              - header
+                              type: object
+                            maxItems: 1000
+                            type: array
+                            x-kubernetes-list-type: atomic
+                          requestHeadersToRemove:
+                            description: RequestHeadersToRemove are the names of the
+                              headers removed from each request before it is sent
+                              to a backend.
+                            items:
+                              maxLength: 256
+                              minLength: 1
+                              pattern: ^[^\x00\x0A\x0D]+$
+                              type: string
+                            maxItems: 64
+                            type: array
+                            x-kubernetes-list-type: atomic
+                          requestTimeoutMilliseconds:
+                            description: |-
+                              RequestTimeout is applied twice. As the request timeout of the connection manager, it bounds the time to receive
+                              the whole request from the client. As the timeout of the routes to a backend, it bounds the time from the end of
+                              the request to the end of the response of the backend. Unset or 0 disables both.
+                            format: int32
+                            type: integer
+                          responseHeadersToAdd:
+                            description: ResponseHeadersToAdd are added to each response
+                              sent to the client, at most 1000.
+                            items:
+                              description: Header name/value pair plus option to control
+                                append behavior.
+                              properties:
+                                append:
+                                  description: |-
+                                    When true, the value is added next to the existing values of the header. When false (default), it replaces
+                                    them.
+                                  type: boolean
+                                header:
+                                  description: Header name/value pair that this option
+                                    applies to.
+                                  properties:
+                                    key:
+                                      description: Header name.
+                                      maxLength: 16384
+                                      minLength: 1
+                                      pattern: ^[^\x00\x0A\x0D]+$
+                                      type: string
+                                    value:
+                                      description: Header value.
+                                      maxLength: 16384
+                                      pattern: ^[^\x00\x0A\x0D]+$
+                                      type: string
+                                    valueFromSecret:
+                                      description: |-
+                                        Value of a secret, for a header carrying a credential such as `Authorization`. Agents send the value of the
+                                        secret, an empty value until they hold the secret.
+                                      properties:
+                                        key:
+                                          description: Key of the value in the data
+                                            of the secret.
+                                          maxLength: 253
+                                          minLength: 1
+                                          type: string
+                                        secretRef:
+                                          description: UUID of the secret.
+                                          properties:
+                                            name:
+                                              description: name of the object.
+                                              maxLength: 253
+                                              minLength: 1
+                                              pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                                              type: string
+                                          required:
+                                          - name
+                                          type: object
+                                      required:
+                                      - key
+                                      - secretRef
+                                      type: object
+                                  required:
+                                  - key
+                                  type: object
+                                  x-kubernetes-validations:
+                                  - message: at most one of value, valueFromSecret
+                                      can be set
+                                    rule: '[has(self.value), has(self.valueFromSecret)].filter(x,
+                                      x).size() <= 1'
+                              required:
+                              - header
+                              type: object
+                            maxItems: 1000
+                            type: array
+                            x-kubernetes-list-type: atomic
+                          responseHeadersToRemove:
+                            description: ResponseHeadersToRemove are the names of
+                              the headers removed from each response sent to the client.
+                            items:
+                              maxLength: 256
+                              minLength: 1
+                              pattern: ^[^\x00\x0A\x0D]+$
+                              type: string
+                            maxItems: 64
+                            type: array
+                            x-kubernetes-list-type: atomic
+                          streamIdleTimeoutMilliseconds:
+                            description: |-
+                              StreamIdleTimeout is how long a stream may stay without activity before envoy resets it. When unset, it is 5
+                              minutes for the connection manager and 15 seconds on the routes to a backend. When set, it applies to both. 0
+                              disables it.
+                            format: int32
+                            type: integer
+                        type: object
+                    type: object
+                    x-kubernetes-validations:
+                    - message: at most one of f5, starling can be set
+                      rule: '[has(self.f5), has(self.starling)].filter(x, x).size()
+                        <= 1'
+                  virtualHosts:
+                    description: |-
+                      Virtual hosts of the VirtualServer, chosen by the host header of each request, so several domains can go to
+                      different backends. A domain can be in one virtual host only.
+                    items:
+                      description: |-
+                        The top level element in the routing configuration of an http virtual server is a virtual host. Each virtual host
+                        has a set of domains that get routed to it based on the incoming request's host header. This allows a single port
+                        to serve several domains. Once a virtual host is selected based on the domain, its routes are tried in order to
+                        choose the backend to route to, or a redirect or a direct response.
+                      properties:
+                        domains:
+                          description: |-
+                            A list of domains (host/authority header) that will be matched to this
+                            virtual host. Wildcard hosts are supported in the suffix or prefix form.
+
+                            Domain search order:
+                             1. Exact domain names: ``www.foo.com``.
+                             2. Suffix domain wildcards: ``*.foo.com`` or ``*-bar.foo.com``.
+                             3. Prefix domain wildcards: ``foo.*`` or ``foo-*``.
+                             4. Special wildcard ``*`` matching any domain.
+
+                            The wildcard will not match the empty string, e.g. ``*-bar.foo.com`` will match ``baz-bar.foo.com`` but not
+                            ``-bar.foo.com``. The longest wildcards match first.
+                            A domain can be in one virtual host of the virtual server only, the controller refuses a virtual server
+                            where two virtual hosts share a domain. So only one virtual host can match on ``*``.
+
+                            Domains cannot contain control characters. This is validated by the well_known_regex HTTP_HEADER_VALUE.
+                            Default to ["*"] if not set.
+                          items:
+                            maxLength: 253
+                            pattern: ^[^\x00\x0A\x0D]+$
+                            type: string
+                          maxItems: 100
+                          minItems: 1
+                          type: array
+                          x-kubernetes-list-type: atomic
+                        externalAuth:
+                          description: |-
+                            Name of the external auth policy checking the routes of the virtual host by default, empty for none. A route can
+                            pick another policy or turn the check off. The controller refuses a name the external_auths of the HTTP routes
+                            config don't define.
+                          maxLength: 63
+                          type: string
+                        metadata:
+                          additionalProperties:
+                            type: string
+                          description: Free key/value pairs attached to the virtual
+                            host.
+                          maxProperties: 64
+                          type: object
+                          x-kubernetes-validations:
+                          - message: keys must be at most 253 characters
+                            rule: self.all(k, k.size() <= 253)
+                          - message: values must be at most 4096 characters
+                            rule: self.all(k, self[k].size() <= 4096)
+                        pathPrefix:
+                          description: |-
+                            A prefix that will be prepended to the prefix and path routes of the virtual host, not to the regex ones.
+                            A prefix route on "/" matches the prefix on whole path segments: with "/api", it matches "/api" and
+                            "/api/users" but not "/apiv2".
+                          maxLength: 2048
+                          type: string
+                        routes:
+                          description: |-
+                            A list of routes that will be matched, in order, for incoming requests. The first route that matches handles
+                            the request.
+                          items:
+                            description: A route matches requests, then sends them
+                              to a backend or answers them with a redirect or a direct
+                              response.
+                            properties:
+                              backendRef:
+                                description: UUID of the backend to send the request
+                                  to. The controller refuses a backend that doesn't
+                                  exist.
+                                properties:
+                                  name:
+                                    description: name of the object.
+                                    maxLength: 253
+                                    minLength: 1
+                                    pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                                    type: string
+                                required:
+                                - name
+                                type: object
+                              directResponse:
+                                description: Return an arbitrary HTTP response directly,
+                                  without proxying.
+                                properties:
+                                  inlineBytes:
+                                    description: Bytes inlined in the configuration.
+                                    format: byte
+                                    maxLength: 5464
+                                    type: string
+                                  inlineString:
+                                    description: String inlined in the configuration.
+                                    maxLength: 4096
+                                    type: string
+                                  status:
+                                    description: Specifies the HTTP response status
+                                      to be returned.
+                                    exclusiveMaximum: true
+                                    format: int32
+                                    maximum: 600
+                                    minimum: 200
+                                    type: integer
+                                required:
+                                - status
+                                type: object
+                                x-kubernetes-validations:
+                                - message: exactly one of inlineBytes, inlineString
+                                    must be set
+                                  rule: '[has(self.inlineBytes), has(self.inlineString)].exists_one(x,
+                                    x)'
+                              externalAuthDisabled:
+                                description: Set to true to skip the check on this
+                                  route, whatever the default policy of the virtual
+                                  host.
+                                type: boolean
+                              externalAuthName:
+                                description: |-
+                                  Name of the policy checking this route, in place of the default one of the virtual host. The controller refuses
+                                  a name the external_auths of the HTTP routes config don't define.
+                                maxLength: 63
+                                type: string
+                              match:
+                                description: Route matching parameters.
+                                properties:
+                                  caseSensitive:
+                                    description: |-
+                                      Indicates that prefix/path matching should be case sensitive. The default
+                                      is true. Ignored for safe_regex matching.
+                                    type: boolean
+                                  path:
+                                    description: |-
+                                      If specified, the route is an exact path rule meaning that the path must
+                                      exactly match the ``:path`` header once the query string is removed.
+                                    maxLength: 2048
+                                    type: string
+                                  prefix:
+                                    description: |-
+                                      If specified, the route is a prefix rule meaning that the prefix must
+                                      match the beginning of the ``:path`` header.
+                                    maxLength: 2048
+                                    type: string
+                                  safeRegex:
+                                    description: |-
+                                      If specified, the route is a regular expression rule meaning that the
+                                      regex must match the ``:path`` header once the query string is removed. The entire path
+                                      (without the query string) must match the regex. The rule will not match if only a
+                                      subsequence of the ``:path`` header matches the regex.
+                                    maxLength: 1024
+                                    minLength: 1
+                                    type: string
+                                type: object
+                                x-kubernetes-validations:
+                                - message: exactly one of prefix, path, safeRegex
+                                    must be set
+                                  rule: '[has(self.prefix), has(self.path), has(self.safeRegex)].exists_one(x,
+                                    x)'
+                              name:
+                                description: Name of the route, unique in its virtual
+                                  host.
+                                maxLength: 253
+                                minLength: 1
+                                type: string
+                              redirect:
+                                description: Return a redirect.
+                                properties:
+                                  hostRedirect:
+                                    description: The host portion of the URL will
+                                      be swapped with this value.
+                                    maxLength: 253
+                                    pattern: ^[^\x00\x0A\x0D]+$
+                                    type: string
+                                  httpsRedirect:
+                                    description: The scheme portion of the URL will
+                                      be swapped with "https".
+                                    type: boolean
+                                  pathRedirect:
+                                    description: |-
+                                      The path portion of the URL will be swapped with this value.
+                                      Please note that query string in path_redirect will override the
+                                      request's query string and will not be stripped.
+
+                                      For example, let's say we have the following routes:
+
+                                      - match: { path: "/old-path-1" }
+                                        redirect: { path_redirect: "/new-path-1" }
+
+                                      1. if request uri is "/old-path-1?bar=1", users will be redirected to "/new-path-1?bar=1"
+                                    maxLength: 2048
+                                    pattern: ^[^\x00\x0A\x0D]+$
+                                    type: string
+                                  portRedirect:
+                                    description: The port value of the URL will be
+                                      swapped with this value.
+                                    format: int32
+                                    minimum: 0
+                                    type: integer
+                                  schemeRedirect:
+                                    description: The scheme portion of the URL will
+                                      be swapped with this value.
+                                    maxLength: 16
+                                    type: string
+                                type: object
+                                x-kubernetes-validations:
+                                - message: at most one of httpsRedirect, schemeRedirect
+                                    can be set
+                                  rule: '[has(self.httpsRedirect), has(self.schemeRedirect)].filter(x,
+                                    x).size() <= 1'
+                              typedOptions:
+                                description: |-
+                                  Extension point for custom options dedicated to a load balancer implementation.
+                                  valid extensions are:
+                                  - flock.extensions.route.starling_route.v1.VirtualHostRouteOptions
+                                properties:
+                                  starling:
+                                    description: |-
+                                      VirtualHostRouteOptions holds the starling agent options of a route of a virtual host, packed in the `typed_options`
+                                      field of `flock.api.config.route.v1.Route`. The agent refuses a route whose options can't be read.
+                                    properties:
+                                      rateLimits:
+                                        description: |-
+                                          Rate limits of the route, each one builds a descriptor of the request matched against the descriptors of the
+                                          `flock.extensions.limit.starling_limit.v1.StarlingRateLimit` of the virtual server. Only routes to a backend are
+                                          rate limited.
+                                        items:
+                                          description: |-
+                                            RouteRateLimit builds one rate limit descriptor of a request from its actions. Envoy limits the request with the
+                                            descriptor of the `flock.extensions.limit.starling_limit.v1.StarlingRateLimit` of the virtual server holding the
+                                            same entries, from its root down to a descriptor with a policy. A descriptor that matches none of them doesn't limit
+                                            the request.
+                                          properties:
+                                            actions:
+                                              description: |-
+                                                Actions build the descriptor in order, each one appending its entry. When one of them can't append its entry, no
+                                                descriptor is built and this rate limit doesn't apply to the request.
+                                              items:
+                                                description: Action appends one entry
+                                                  to the descriptor of the request.
+                                                properties:
+                                                  genericKey:
+                                                    description: GenericKey appends
+                                                      an entry with a fixed key and
+                                                      value.
+                                                    properties:
+                                                      descriptorKey:
+                                                        description: DescriptorKey
+                                                          is the key of the entry,
+                                                          `generic_key` when empty.
+                                                        maxLength: 253
+                                                        type: string
+                                                      descriptorValue:
+                                                        description: DescriptorValue
+                                                          is the value of the entry.
+                                                        maxLength: 253
+                                                        minLength: 1
+                                                        type: string
+                                                    required:
+                                                    - descriptorValue
+                                                    type: object
+                                                  remoteAddress:
+                                                    description: RemoteAddress appends
+                                                      an entry with the client address.
+                                                    type: object
+                                                  requestHeaders:
+                                                    description: RequestHeaders appends
+                                                      an entry with the value of a
+                                                      request header.
+                                                    properties:
+                                                      descriptorKey:
+                                                        description: DescriptorKey
+                                                          is the key of the entry,
+                                                          the `key` of the matching
+                                                          descriptor of the `StarlingRateLimit`.
+                                                        maxLength: 253
+                                                        minLength: 1
+                                                        type: string
+                                                      headerName:
+                                                        description: HeaderName is
+                                                          the request header whose
+                                                          value becomes the value
+                                                          of the entry.
+                                                        maxLength: 256
+                                                        minLength: 1
+                                                        pattern: ^[^\x00\x0A\x0D]+$
+                                                        type: string
+                                                    required:
+                                                    - descriptorKey
+                                                    - headerName
+                                                    type: object
+                                                type: object
+                                                x-kubernetes-validations:
+                                                - message: exactly one of requestHeaders,
+                                                    remoteAddress, genericKey must
+                                                    be set
+                                                  rule: '[has(self.requestHeaders),
+                                                    has(self.remoteAddress), has(self.genericKey)].exists_one(x,
+                                                    x)'
+                                              maxItems: 8
+                                              minItems: 1
+                                              type: array
+                                              x-kubernetes-list-type: atomic
+                                          required:
+                                          - actions
+                                          type: object
+                                        maxItems: 4
+                                        type: array
+                                        x-kubernetes-list-type: atomic
+                                      waf:
+                                        description: |-
+                                          Waf turns on the WAF for the route when set, even empty. An empty one blocks the requests the OWASP Core Rule Set
+                                          flags, its config picks detection only or custom rules instead. Unset, the route has no WAF.
+                                        properties:
+                                          customRules:
+                                            description: |-
+                                              CustomRules is a whole coraza config (SecLang directives) replacing the default one. It can include the embedded
+                                              files `@coraza.conf-recommended`, `@crs-setup-lts.conf.example` and `@owasp_crs_lts/*.conf`. The WAF adds its
+                                              limits to every config (128 arguments and 32 KiB of response body inspected), so rule ids 9000001-9000099 are
+                                              reserved.
+                                            maxLength: 65536
+                                            type: string
+                                          detectOnly:
+                                            description: DetectOnly runs the default
+                                              OWASP CRS in DetectionOnly mode. Matching
+                                              requests are logged and never blocked.
+                                            type: boolean
+                                          failOpen:
+                                            description: |-
+                                              FailOpen lets the requests of the route through uninspected when the WAF can't answer them in time, down or
+                                              overloaded, where they fail by default. It favours the availability of the route over its protection.
+                                            type: boolean
+                                          partialRequestBody:
+                                            description: |-
+                                              PartialRequestBody lets a request body over request_body_limit through instead of refusing it. The WAF inspects
+                                              its first request_body_limit bytes, and envoy sends the rest to the backend uninspected, so an attack placed after
+                                              the limit isn't seen. The request body parsing rules of the coraza recommended config (200002 and 200003) don't
+                                              apply to such a cut body, since a JSON or multipart body cut at the limit never parses.
+                                            type: boolean
+                                          requestBodyLimit:
+                                            description: |-
+                                              RequestBodyLimit is the most bytes of a request body envoy buffers and the WAF inspects, 64 KiB (65536) when 0.
+                                              A bigger body is refused with a 413, unless partial_request_body is set. Inspecting a body takes a few ms per KiB
+                                              with the flock binary and ten times less with the starling-waf image (RE2). The WAF counts 10 ms per KiB (1 ms with
+                                              RE2) and gives envoy more time for a body that needs over 50 ms by this count, up to 10 seconds. Half the cores of a node at most
+                                              inspect such bodies at once, so the other requests keep the rest.
+                                            format: int32
+                                            maximum: 8388608
+                                            minimum: 0
+                                            type: integer
+                                          skipResponseBody:
+                                            description: |-
+                                              SkipResponseBody stops the WAF from inspecting the response bodies of the route, which saves its CPU on routes
+                                              serving large or binary content. The WAF still inspects the response headers.
+                                            type: boolean
+                                        type: object
+                                        x-kubernetes-validations:
+                                        - message: at most one of detectOnly, customRules
+                                            can be set
+                                          rule: '[has(self.detectOnly), has(self.customRules)].filter(x,
+                                            x).size() <= 1'
+                                    type: object
+                                type: object
+                            required:
+                            - match
+                            - name
+                            type: object
+                            x-kubernetes-validations:
+                            - message: exactly one of redirect, directResponse, backendRef
+                                must be set
+                              rule: '[has(self.redirect), has(self.directResponse),
+                                has(self.backendRef)].exists_one(x, x)'
+                            - message: at most one of externalAuthName, externalAuthDisabled
+                                can be set
+                              rule: '[has(self.externalAuthName), has(self.externalAuthDisabled)].filter(x,
+                                x).size() <= 1'
+                          maxItems: 256
+                          type: array
+                          x-kubernetes-list-map-keys:
+                          - name
+                          x-kubernetes-list-type: map
+                        tlsOptions:
+                          description: |-
+                            TLS termination of the virtual host, one entry per set of certificates. Each entry gets the connections whose
+                            SNI is in its server_names. An entry with no server_names gets the connections no other entry matches.
+                            When at least one virtual host of the virtual server has TLS options, the port only accepts TLS. A request
+                            decrypted by any entry is then routed on its host header among all the virtual hosts of the virtual server.
+                          items:
+                            description: |-
+                              TLS is the configuration of TLS termination on a listener, matched on the SNI of the connection and serving the
+                              given certificates. The minimum TLS version is 1.2.
+                            properties:
+                              alpnProtocols:
+                                description: |-
+                                  Supplies the list of ALPN protocols that the listener should expose. In
+                                  practice this is likely to be set to one of two values:
+
+                                  * ["h2", "http/1.1"] If the listener is going to support both HTTP/2 and HTTP/1.1.
+                                  * ["http/1.1"] If the listener is only going to support HTTP/1.1.
+
+                                  There is no default for this parameter. If empty, tls handshake will not expose ALPN.
+                                items:
+                                  maxLength: 32
+                                  type: string
+                                maxItems: 8
+                                type: array
+                                x-kubernetes-list-type: atomic
+                              certificateRefs:
+                                description: |-
+                                  UUIDs of the certificate resources served on this listener, at least one. The agent receives them from the
+                                  controller.
+                                items:
+                                  description: |-
+                                    ObjectRef points at another object by name, its kind given by the field holding it. Every kind is cluster-scoped
+                                    but Secret, read in the namespace of the provisioner.
+                                  properties:
+                                    name:
+                                      description: name of the object.
+                                      maxLength: 253
+                                      minLength: 1
+                                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                                      type: string
+                                  required:
+                                  - name
+                                  type: object
+                                maxItems: 16
+                                minItems: 1
+                                type: array
+                                x-kubernetes-list-type: atomic
+                              serverNames:
+                                description: |-
+                                  If non-empty, a list of server names (e.g. SNI for TLS protocol) to consider when choosing the TLS configuration.
+                                  Those values will be compared against the server names of a new connection, when detected by one of the listener filters.
+                                  If empty, this configuration matches every connection that no other server name matched.
+
+                                  The server name will be matched against all wildcard domains, i.e. www.example.com will be first matched against
+                                  www.example.com, then *.example.com, then *.com.
+
+                                  Note that partial wildcards are not supported, and values like *w.example.com are invalid.
+                                items:
+                                  maxLength: 253
+                                  type: string
+                                maxItems: 100
+                                type: array
+                                x-kubernetes-list-type: atomic
+                            required:
+                            - certificateRefs
+                            type: object
+                          maxItems: 16
+                          type: array
+                          x-kubernetes-list-type: atomic
+                      type: object
+                    maxItems: 32
+                    minItems: 1
+                    type: array
+                    x-kubernetes-list-type: atomic
+                required:
+                - virtualHosts
+                type: object
+              limitConfig:
+                description: |-
+                  Limits on the connections of the VirtualServer, applied on each VIP. An agent may apply only the first limit of
+                  each kind. On a wildcard VIP (ip 0.0.0.0 or ::), the starling agent applies each limit on every address of the
+                  machine the VIP stands for, so each address gets its own limit.
+                items:
+                  description: Config is one limit of a virtual server.
+                  properties:
+                    connectionLimit:
+                      description: Limit on the number of open connections.
+                      properties:
+                        destinationAddress:
+                          description: Count the connections per destination address.
+                          type: boolean
+                        maxConnections:
+                          description: Maximum number of connections allowed.
+                          exclusiveMinimum: true
+                          format: int64
+                          maximum: 9007199254740991
+                          minimum: 0
+                          type: integer
+                        sourceAddress:
+                          description: Count the connections per source address.
+                          type: boolean
+                      required:
+                      - maxConnections
+                      type: object
+                    connectionRateLimit:
+                      description: Limit on the rate of new connections.
+                      properties:
+                        burst:
+                          description: |-
+                            Size of the bucket, the number of connections (packets on UDP) let through at once above the rate. The bucket
+                            refills at the rate.
+                          exclusiveMinimum: true
+                          format: int64
+                          maximum: 9007199254740991
+                          minimum: 0
+                          type: integer
+                        destinationAddress:
+                          description: Use one bucket per destination address.
+                          type: boolean
+                        rate:
+                          description: Maximum average rate, in connections (packets
+                            on UDP) per unit.
+                          exclusiveMinimum: true
+                          format: int64
+                          maximum: 9007199254740991
+                          minimum: 0
+                          type: integer
+                        sourceAddress:
+                          description: Use one bucket per source address.
+                          type: boolean
+                        unit:
+                          description: Time unit of rate. UNKNOWN means SECOND.
+                          enum:
+                          - Unknown
+                          - Second
+                          - Minute
+                          - Hour
+                          - Day
+                          type: string
+                      required:
+                      - burst
+                      - rate
+                      type: object
+                    typedLimit:
+                      description: |-
+                        Extension point for limits dedicated to a load balancer implementation.
+                        valid extensions are:
+                        - flock.extensions.limit.starling_limit.v1.StarlingRateLimit
+                      properties:
+                        starling:
+                          description: |-
+                            Rate limit of the requests of an http virtual server, applied by envoy in the starling agent. It is packed in the
+                            `typed_limit` of an entry of the `limit_config` of the virtual server, and only the first such entry is used.
+
+                            Each rate limit of a route (`flock.extensions.route.starling_route.v1.VirtualHostRouteOptions`) builds a descriptor
+                            of the request with one entry per action, in order. It is limited by the descriptor declared here with exactly these
+                            entries, from a root descriptor down to a descriptor with a policy. A request over the limit of one of its
+                            descriptors is answered 429.
+
+                            Each agent counts the requests it receives, so N agents announcing the VIP let through N times the rate.
+                          properties:
+                            descriptors:
+                              description: Root descriptors, at least one.
+                              items:
+                                description: Descriptor matches one entry of the descriptor
+                                  of a request, and its sub descriptors match the
+                                  next entries.
+                                properties:
+                                  descriptors:
+                                    description: Sub descriptors, matching one more
+                                      entry.
+                                    items:
+                                      description: Descriptor matches one entry of
+                                        the descriptor of a request, and its sub descriptors
+                                        match the next entries.
+                                      properties:
+                                        descriptors:
+                                          description: Sub descriptors, matching one
+                                            more entry.
+                                          items:
+                                            description: Descriptor matches one entry
+                                              of the descriptor of a request, and
+                                              its sub descriptors match the next entries.
+                                            properties:
+                                              descriptors:
+                                                description: Sub descriptors, matching
+                                                  one more entry.
+                                                items:
+                                                  description: |-
+                                                    Descriptor matches one entry of the descriptor of a request, and its sub descriptors match the next entries.
+
+                                                    The CRD stops descriptors at this depth (4), since a schema can't hold its own type.
+                                                  properties:
+                                                    key:
+                                                      description: |-
+                                                        Key of the entry, the key set by the matching route action (e.g. `remote_address`, or the `descriptor_key` of a
+                                                        request headers action).
+                                                      maxLength: 253
+                                                      minLength: 1
+                                                      type: string
+                                                    policy:
+                                                      description: |-
+                                                        Limit of the requests matching the entries from the root descriptor down to this one. A descriptor without policy
+                                                        only groups its sub descriptors.
+                                                      properties:
+                                                        requestsPerUnit:
+                                                          description: Number of requests
+                                                            allowed within `unit`
+                                                            time.
+                                                          exclusiveMinimum: true
+                                                          format: int32
+                                                          minimum: 0
+                                                          type: integer
+                                                        unit:
+                                                          description: Unit of time
+                                                            for the rate limit, a
+                                                            second when unset.
+                                                          enum:
+                                                          - Unknown
+                                                          - Second
+                                                          - Minute
+                                                          - Hour
+                                                          - Day
+                                                          type: string
+                                                      required:
+                                                      - requestsPerUnit
+                                                      type: object
+                                                    shadowMode:
+                                                      description: |-
+                                                        When true, the requests over the limit of the policy still reach the backend and only the rate limit stats of envoy
+                                                        count them.
+                                                      type: boolean
+                                                    value:
+                                                      description: |-
+                                                        Value of the entry. When empty, any value matches and each value gets its own limit, e.g. one limit per client
+                                                        address with the key `remote_address`. A sibling descriptor with the same key and a value replaces it for that
+                                                        value. The agent keeps the counters of at most 10000 such values per virtual server, and a value evicted from them
+                                                        starts again with a full limit.
+                                                      maxLength: 253
+                                                      type: string
+                                                  required:
+                                                  - key
+                                                  type: object
+                                                maxItems: 16
+                                                type: array
+                                                x-kubernetes-list-type: atomic
+                                              key:
+                                                description: |-
+                                                  Key of the entry, the key set by the matching route action (e.g. `remote_address`, or the `descriptor_key` of a
+                                                  request headers action).
+                                                maxLength: 253
+                                                minLength: 1
+                                                type: string
+                                              policy:
+                                                description: |-
+                                                  Limit of the requests matching the entries from the root descriptor down to this one. A descriptor without policy
+                                                  only groups its sub descriptors.
+                                                properties:
+                                                  requestsPerUnit:
+                                                    description: Number of requests
+                                                      allowed within `unit` time.
+                                                    exclusiveMinimum: true
+                                                    format: int32
+                                                    minimum: 0
+                                                    type: integer
+                                                  unit:
+                                                    description: Unit of time for
+                                                      the rate limit, a second when
+                                                      unset.
+                                                    enum:
+                                                    - Unknown
+                                                    - Second
+                                                    - Minute
+                                                    - Hour
+                                                    - Day
+                                                    type: string
+                                                required:
+                                                - requestsPerUnit
+                                                type: object
+                                              shadowMode:
+                                                description: |-
+                                                  When true, the requests over the limit of the policy still reach the backend and only the rate limit stats of envoy
+                                                  count them.
+                                                type: boolean
+                                              value:
+                                                description: |-
+                                                  Value of the entry. When empty, any value matches and each value gets its own limit, e.g. one limit per client
+                                                  address with the key `remote_address`. A sibling descriptor with the same key and a value replaces it for that
+                                                  value. The agent keeps the counters of at most 10000 such values per virtual server, and a value evicted from them
+                                                  starts again with a full limit.
+                                                maxLength: 253
+                                                type: string
+                                            required:
+                                            - key
+                                            type: object
+                                          maxItems: 16
+                                          type: array
+                                          x-kubernetes-list-type: atomic
+                                        key:
+                                          description: |-
+                                            Key of the entry, the key set by the matching route action (e.g. `remote_address`, or the `descriptor_key` of a
+                                            request headers action).
+                                          maxLength: 253
+                                          minLength: 1
+                                          type: string
+                                        policy:
+                                          description: |-
+                                            Limit of the requests matching the entries from the root descriptor down to this one. A descriptor without policy
+                                            only groups its sub descriptors.
+                                          properties:
+                                            requestsPerUnit:
+                                              description: Number of requests allowed
+                                                within `unit` time.
+                                              exclusiveMinimum: true
+                                              format: int32
+                                              minimum: 0
+                                              type: integer
+                                            unit:
+                                              description: Unit of time for the rate
+                                                limit, a second when unset.
+                                              enum:
+                                              - Unknown
+                                              - Second
+                                              - Minute
+                                              - Hour
+                                              - Day
+                                              type: string
+                                          required:
+                                          - requestsPerUnit
+                                          type: object
+                                        shadowMode:
+                                          description: |-
+                                            When true, the requests over the limit of the policy still reach the backend and only the rate limit stats of envoy
+                                            count them.
+                                          type: boolean
+                                        value:
+                                          description: |-
+                                            Value of the entry. When empty, any value matches and each value gets its own limit, e.g. one limit per client
+                                            address with the key `remote_address`. A sibling descriptor with the same key and a value replaces it for that
+                                            value. The agent keeps the counters of at most 10000 such values per virtual server, and a value evicted from them
+                                            starts again with a full limit.
+                                          maxLength: 253
+                                          type: string
+                                      required:
+                                      - key
+                                      type: object
+                                    maxItems: 16
+                                    type: array
+                                    x-kubernetes-list-type: atomic
+                                  key:
+                                    description: |-
+                                      Key of the entry, the key set by the matching route action (e.g. `remote_address`, or the `descriptor_key` of a
+                                      request headers action).
+                                    maxLength: 253
+                                    minLength: 1
+                                    type: string
+                                  policy:
+                                    description: |-
+                                      Limit of the requests matching the entries from the root descriptor down to this one. A descriptor without policy
+                                      only groups its sub descriptors.
+                                    properties:
+                                      requestsPerUnit:
+                                        description: Number of requests allowed within
+                                          `unit` time.
+                                        exclusiveMinimum: true
+                                        format: int32
+                                        minimum: 0
+                                        type: integer
+                                      unit:
+                                        description: Unit of time for the rate limit,
+                                          a second when unset.
+                                        enum:
+                                        - Unknown
+                                        - Second
+                                        - Minute
+                                        - Hour
+                                        - Day
+                                        type: string
+                                    required:
+                                    - requestsPerUnit
+                                    type: object
+                                  shadowMode:
+                                    description: |-
+                                      When true, the requests over the limit of the policy still reach the backend and only the rate limit stats of envoy
+                                      count them.
+                                    type: boolean
+                                  value:
+                                    description: |-
+                                      Value of the entry. When empty, any value matches and each value gets its own limit, e.g. one limit per client
+                                      address with the key `remote_address`. A sibling descriptor with the same key and a value replaces it for that
+                                      value. The agent keeps the counters of at most 10000 such values per virtual server, and a value evicted from them
+                                      starts again with a full limit.
+                                    maxLength: 253
+                                    type: string
+                                required:
+                                - key
+                                type: object
+                              maxItems: 16
+                              minItems: 1
+                              type: array
+                              x-kubernetes-list-type: atomic
+                          required:
+                          - descriptors
+                          type: object
+                      type: object
+                  type: object
+                  x-kubernetes-validations:
+                  - message: exactly one of connectionLimit, connectionRateLimit,
+                      typedLimit must be set
+                    rule: '[has(self.connectionLimit), has(self.connectionRateLimit),
+                      has(self.typedLimit)].exists_one(x, x)'
+                maxItems: 16
+                type: array
+                x-kubernetes-list-type: atomic
+              port:
+                description: Port the VirtualServer listens on, on each of its VIPs.
+                exclusiveMinimum: true
+                format: int32
+                maximum: 65535
+                minimum: 0
+                type: integer
+              tcpRouteConfig:
+                description: TCP Route configuration
+                properties:
+                  acceptProxyProtocol:
+                    description: |-
+                      Read a proxy protocol header (v1 or v2) sent by the client before anything else:
+                      the client address it holds becomes the client address of the connection.
+                      Connections without the header are refused.
+                    type: boolean
+                  backendRef:
+                    description: UUID of the Backend to route the traffic to
+                    properties:
+                      name:
+                        description: name of the object.
+                        maxLength: 253
+                        minLength: 1
+                        pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                        type: string
+                    required:
+                    - name
+                    type: object
+                  typedOptions:
+                    description: |-
+                      Extension point for custom options dedicated to a load balancer implementation.
+                      valid extensions are:
+                      - flock.extensions.vs.starling_options.v1.TcpUdpOptions
+                      - flock.extensions.vs.f5_options.v1.VirtualServerOptions
+                    properties:
+                      f5:
+                        description: |-
+                          VirtualServerOptions holds the F5 agent options of a virtual server, packed in the `typed_options` field of the
+                          tcp, udp, http or tls over tcp route config of `flock.api.config.vs.v1.VirtualServer`.
+
+                          Every string field naming a BIG-IP object takes the full path of an object that already exists on the BIG-IP, for
+                          example `/Common/my_irule`. The agent never creates nor changes those objects. A path to a missing object makes the
+                          BIG-IP refuse the partition of the virtual server, reported as an error on the virtual server.
+                        properties:
+                          auto:
+                            description: Translate to a self IP of the BIG-IP (automap).
+                            type: boolean
+                          clientTLSProfile:
+                            description: |-
+                              Client SSL profile, facing the clients, replacing the one the agent builds from the certificates of the virtual
+                              server.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          fallbackPersistenceProfile:
+                            description: Persistence profile used when the persistence
+                              profile can't find a record.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          httpProfile:
+                            description: HTTP profile of an http virtual server, replacing
+                              the default one.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          irules:
+                            description: iRules attached to the virtual server after
+                              the iRules the agent generates.
+                            items:
+                              maxLength: 255
+                              pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                              type: string
+                            maxItems: 64
+                            type: array
+                            x-kubernetes-list-type: atomic
+                          none:
+                            description: Keep the client address. The endpoints must
+                              route their answers back through the BIG-IP.
+                            type: boolean
+                          persistenceProfile:
+                            description: |-
+                              Persistence profile of the virtual server. Without it the virtual server has no persistence, unless its backend
+                              uses a consistent hash lb_policy.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          pool:
+                            description: Translate to the addresses of an existing
+                              SNAT pool, given by full path.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          serverTLSProfile:
+                            description: Server SSL profile, facing the endpoints,
+                              replacing the one the agent builds from the TLS settings
+                              of the backend.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          tcpProfile:
+                            description: TCP profile, replacing the default one, for
+                              tcp, http and tls over tcp virtual servers.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          udpProfile:
+                            description: UDP profile, replacing the default one, for
+                              udp virtual servers.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          wafPolicy:
+                            description: WAF (Advanced WAF) policy of the virtual
+                              server.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                        type: object
+                        x-kubernetes-validations:
+                        - message: at most one of auto, none, pool can be set
+                          rule: '[has(self.auto), has(self.none), has(self.pool)].filter(x,
+                            x).size() <= 1'
+                      starling:
+                        description: |-
+                          TcpUdpOptions holds the starling agent options of a tcp or udp virtual server, packed in the `typed_options` field of
+                          `flock.api.config.vs.v1.TcpRouteConfig` or `flock.api.config.vs.v1.UdpRouteConfig`.
+
+                          The agent serves these virtual servers with IPVS, or with envoy when the backend uses the PROXY protocol, when the
+                          virtual server accepts it, when the kernel's IPVS can't apply the load balancing policy of the backend, or in dev
+                          mode.
+                        properties:
+                          disableDnat:
+                            description: |-
+                              DisableDnat keeps the VIP as the destination of the packets sent to the backends. With IPVS the agent forwards them
+                              with direct routing instead of NAT (masquerade), so each backend must accept the VIP as a local address. With envoy
+                              it adds envoy's `original_dst` listener filter.
+                            type: boolean
+                          disableSnat:
+                            description: |-
+                              DisableSnat keeps the client address as the source of the packets sent to the backends, so the backends see the
+                              real client IP and must route their replies back through the agent. With IPVS the agent then sets no nftables SNAT
+                              mark for the port of the virtual server. With envoy it adds envoy's `original_src` listener filter, which the agent
+                              setting `advertisement.disable_snat` also adds to every envoy listener.
+                            type: boolean
+                        type: object
+                    type: object
+                    x-kubernetes-validations:
+                    - message: at most one of f5, starling can be set
+                      rule: '[has(self.f5), has(self.starling)].filter(x, x).size()
+                        <= 1'
+                required:
+                - backendRef
+                type: object
+              tlsTCPRoutesConfig:
+                description: TLS over TCP Route configuration
+                properties:
+                  acceptProxyProtocol:
+                    description: |-
+                      Read a proxy protocol header (v1 or v2) sent by the client before anything else:
+                      the client address it holds becomes the client address of the connection.
+                      Connections without the header are refused.
+                    type: boolean
+                  routes:
+                    description: |-
+                      Routes of the VirtualServer, chosen by the SNI of each connection, so several certificates or server names can
+                      go to different backends.
+                    items:
+                      description: TlsTcpRouteConfig describe the route configuration
+                        for a TLS over TCP VirtualServer
+                      properties:
+                        backendRef:
+                          description: UUID of the Backend to route the traffic to
+                          properties:
+                            name:
+                              description: name of the object.
+                              maxLength: 253
+                              minLength: 1
+                              pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        passthrough:
+                          description: |-
+                            TLS is not terminated: the connection is routed on its SNI and sent encrypted to the backend,
+                            the backends keep their own certificates
+                          properties:
+                            serverNames:
+                              description: |-
+                                SNI of the connections this route gets, matched as tls.server_names (wildcards like *.example.com allowed).
+                                If empty, the route gets the connections no other route of the virtual server matches,
+                                connections without TLS included.
+                              items:
+                                maxLength: 253
+                                type: string
+                              maxItems: 100
+                              type: array
+                              x-kubernetes-list-type: atomic
+                          type: object
+                        tls:
+                          description: |-
+                            TLS is terminated by the load balancer with the given certificates,
+                            the decrypted traffic is sent to the backend.
+                            if tls.server_names is set, this route only gets the connections with one of those SNI
+                          properties:
+                            alpnProtocols:
+                              description: |-
+                                Supplies the list of ALPN protocols that the listener should expose. In
+                                practice this is likely to be set to one of two values:
+
+                                * ["h2", "http/1.1"] If the listener is going to support both HTTP/2 and HTTP/1.1.
+                                * ["http/1.1"] If the listener is only going to support HTTP/1.1.
+
+                                There is no default for this parameter. If empty, tls handshake will not expose ALPN.
+                              items:
+                                maxLength: 32
+                                type: string
+                              maxItems: 8
+                              type: array
+                              x-kubernetes-list-type: atomic
+                            certificateRefs:
+                              description: |-
+                                UUIDs of the certificate resources served on this listener, at least one. The agent receives them from the
+                                controller.
+                              items:
+                                description: |-
+                                  ObjectRef points at another object by name, its kind given by the field holding it. Every kind is cluster-scoped
+                                  but Secret, read in the namespace of the provisioner.
+                                properties:
+                                  name:
+                                    description: name of the object.
+                                    maxLength: 253
+                                    minLength: 1
+                                    pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                                    type: string
+                                required:
+                                - name
+                                type: object
+                              maxItems: 16
+                              minItems: 1
+                              type: array
+                              x-kubernetes-list-type: atomic
+                            serverNames:
+                              description: |-
+                                If non-empty, a list of server names (e.g. SNI for TLS protocol) to consider when choosing the TLS configuration.
+                                Those values will be compared against the server names of a new connection, when detected by one of the listener filters.
+                                If empty, this configuration matches every connection that no other server name matched.
+
+                                The server name will be matched against all wildcard domains, i.e. www.example.com will be first matched against
+                                www.example.com, then *.example.com, then *.com.
+
+                                Note that partial wildcards are not supported, and values like *w.example.com are invalid.
+                              items:
+                                maxLength: 253
+                                type: string
+                              maxItems: 100
+                              type: array
+                              x-kubernetes-list-type: atomic
+                          required:
+                          - certificateRefs
+                          type: object
+                        typedOptions:
+                          description: |-
+                            Extension point for custom options dedicated to a load balancer implementation.
+                            valid extensions are:
+                            - flock.extensions.vs.starling_options.v1.TlsTcpOptions
+                          properties:
+                            starling:
+                              description: |-
+                                TlsTcpOptions holds the starling agent options of a TLS over TCP virtual server, packed in the `typed_options` field
+                                of `flock.api.config.vs.v1.TlsTcpRoutesConfig`. Envoy serves these virtual servers.
+
+                                Virtual servers sharing a port of a VIP must all have the same `disable_snat` and `disable_dnat`, because they apply
+                                to the whole port. A virtual server that differs is not served on the port.
+                              properties:
+                                disableDnat:
+                                  description: DisableDnat adds envoy's `original_dst`
+                                    listener filter.
+                                  type: boolean
+                                disableSnat:
+                                  description: |-
+                                    DisableSnat adds envoy's `original_src` listener filter, so envoy connects to the backends with the client address
+                                    as source and the backends must route their replies back through the agent. The agent setting
+                                    `advertisement.disable_snat` has the same effect on every envoy listener.
+                                  type: boolean
+                              type: object
+                          type: object
+                      required:
+                      - backendRef
+                      type: object
+                      x-kubernetes-validations:
+                      - message: exactly one of tls, passthrough must be set
+                        rule: '[has(self.tls), has(self.passthrough)].exists_one(x,
+                          x)'
+                    maxItems: 100
+                    minItems: 1
+                    type: array
+                    x-kubernetes-list-type: atomic
+                  typedOptions:
+                    description: |-
+                      Extension point for custom options dedicated to a load balancer implementation.
+                      valid extensions are:
+                      - flock.extensions.vs.starling_options.v1.TlsTcpOptions
+                      - flock.extensions.vs.f5_options.v1.VirtualServerOptions
+                    properties:
+                      f5:
+                        description: |-
+                          VirtualServerOptions holds the F5 agent options of a virtual server, packed in the `typed_options` field of the
+                          tcp, udp, http or tls over tcp route config of `flock.api.config.vs.v1.VirtualServer`.
+
+                          Every string field naming a BIG-IP object takes the full path of an object that already exists on the BIG-IP, for
+                          example `/Common/my_irule`. The agent never creates nor changes those objects. A path to a missing object makes the
+                          BIG-IP refuse the partition of the virtual server, reported as an error on the virtual server.
+                        properties:
+                          auto:
+                            description: Translate to a self IP of the BIG-IP (automap).
+                            type: boolean
+                          clientTLSProfile:
+                            description: |-
+                              Client SSL profile, facing the clients, replacing the one the agent builds from the certificates of the virtual
+                              server.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          fallbackPersistenceProfile:
+                            description: Persistence profile used when the persistence
+                              profile can't find a record.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          httpProfile:
+                            description: HTTP profile of an http virtual server, replacing
+                              the default one.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          irules:
+                            description: iRules attached to the virtual server after
+                              the iRules the agent generates.
+                            items:
+                              maxLength: 255
+                              pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                              type: string
+                            maxItems: 64
+                            type: array
+                            x-kubernetes-list-type: atomic
+                          none:
+                            description: Keep the client address. The endpoints must
+                              route their answers back through the BIG-IP.
+                            type: boolean
+                          persistenceProfile:
+                            description: |-
+                              Persistence profile of the virtual server. Without it the virtual server has no persistence, unless its backend
+                              uses a consistent hash lb_policy.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          pool:
+                            description: Translate to the addresses of an existing
+                              SNAT pool, given by full path.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          serverTLSProfile:
+                            description: Server SSL profile, facing the endpoints,
+                              replacing the one the agent builds from the TLS settings
+                              of the backend.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          tcpProfile:
+                            description: TCP profile, replacing the default one, for
+                              tcp, http and tls over tcp virtual servers.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          udpProfile:
+                            description: UDP profile, replacing the default one, for
+                              udp virtual servers.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          wafPolicy:
+                            description: WAF (Advanced WAF) policy of the virtual
+                              server.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                        type: object
+                        x-kubernetes-validations:
+                        - message: at most one of auto, none, pool can be set
+                          rule: '[has(self.auto), has(self.none), has(self.pool)].filter(x,
+                            x).size() <= 1'
+                      starling:
+                        description: |-
+                          TlsTcpOptions holds the starling agent options of a TLS over TCP virtual server, packed in the `typed_options` field
+                          of `flock.api.config.vs.v1.TlsTcpRoutesConfig`. Envoy serves these virtual servers.
+
+                          Virtual servers sharing a port of a VIP must all have the same `disable_snat` and `disable_dnat`, because they apply
+                          to the whole port. A virtual server that differs is not served on the port.
+                        properties:
+                          disableDnat:
+                            description: DisableDnat adds envoy's `original_dst` listener
+                              filter.
+                            type: boolean
+                          disableSnat:
+                            description: |-
+                              DisableSnat adds envoy's `original_src` listener filter, so envoy connects to the backends with the client address
+                              as source and the backends must route their replies back through the agent. The agent setting
+                              `advertisement.disable_snat` has the same effect on every envoy listener.
+                            type: boolean
+                        type: object
+                    type: object
+                    x-kubernetes-validations:
+                    - message: at most one of f5, starling can be set
+                      rule: '[has(self.f5), has(self.starling)].filter(x, x).size()
+                        <= 1'
+                required:
+                - routes
+                type: object
+              udpRouteConfig:
+                description: UDP Route configuration
+                properties:
+                  backendRef:
+                    description: UUID of the Backend to route the traffic to
+                    properties:
+                      name:
+                        description: name of the object.
+                        maxLength: 253
+                        minLength: 1
+                        pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                        type: string
+                    required:
+                    - name
+                    type: object
+                  typedOptions:
+                    description: |-
+                      Extension point for custom options dedicated to a load balancer implementation.
+                      valid extensions are:
+                      - flock.extensions.vs.starling_options.v1.TcpUdpOptions
+                      - flock.extensions.vs.f5_options.v1.VirtualServerOptions
+                    properties:
+                      f5:
+                        description: |-
+                          VirtualServerOptions holds the F5 agent options of a virtual server, packed in the `typed_options` field of the
+                          tcp, udp, http or tls over tcp route config of `flock.api.config.vs.v1.VirtualServer`.
+
+                          Every string field naming a BIG-IP object takes the full path of an object that already exists on the BIG-IP, for
+                          example `/Common/my_irule`. The agent never creates nor changes those objects. A path to a missing object makes the
+                          BIG-IP refuse the partition of the virtual server, reported as an error on the virtual server.
+                        properties:
+                          auto:
+                            description: Translate to a self IP of the BIG-IP (automap).
+                            type: boolean
+                          clientTLSProfile:
+                            description: |-
+                              Client SSL profile, facing the clients, replacing the one the agent builds from the certificates of the virtual
+                              server.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          fallbackPersistenceProfile:
+                            description: Persistence profile used when the persistence
+                              profile can't find a record.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          httpProfile:
+                            description: HTTP profile of an http virtual server, replacing
+                              the default one.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          irules:
+                            description: iRules attached to the virtual server after
+                              the iRules the agent generates.
+                            items:
+                              maxLength: 255
+                              pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                              type: string
+                            maxItems: 64
+                            type: array
+                            x-kubernetes-list-type: atomic
+                          none:
+                            description: Keep the client address. The endpoints must
+                              route their answers back through the BIG-IP.
+                            type: boolean
+                          persistenceProfile:
+                            description: |-
+                              Persistence profile of the virtual server. Without it the virtual server has no persistence, unless its backend
+                              uses a consistent hash lb_policy.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          pool:
+                            description: Translate to the addresses of an existing
+                              SNAT pool, given by full path.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          serverTLSProfile:
+                            description: Server SSL profile, facing the endpoints,
+                              replacing the one the agent builds from the TLS settings
+                              of the backend.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          tcpProfile:
+                            description: TCP profile, replacing the default one, for
+                              tcp, http and tls over tcp virtual servers.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          udpProfile:
+                            description: UDP profile, replacing the default one, for
+                              udp virtual servers.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                          wafPolicy:
+                            description: WAF (Advanced WAF) policy of the virtual
+                              server.
+                            maxLength: 255
+                            pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                            type: string
+                        type: object
+                        x-kubernetes-validations:
+                        - message: at most one of auto, none, pool can be set
+                          rule: '[has(self.auto), has(self.none), has(self.pool)].filter(x,
+                            x).size() <= 1'
+                      starling:
+                        description: |-
+                          TcpUdpOptions holds the starling agent options of a tcp or udp virtual server, packed in the `typed_options` field of
+                          `flock.api.config.vs.v1.TcpRouteConfig` or `flock.api.config.vs.v1.UdpRouteConfig`.
+
+                          The agent serves these virtual servers with IPVS, or with envoy when the backend uses the PROXY protocol, when the
+                          virtual server accepts it, when the kernel's IPVS can't apply the load balancing policy of the backend, or in dev
+                          mode.
+                        properties:
+                          disableDnat:
+                            description: |-
+                              DisableDnat keeps the VIP as the destination of the packets sent to the backends. With IPVS the agent forwards them
+                              with direct routing instead of NAT (masquerade), so each backend must accept the VIP as a local address. With envoy
+                              it adds envoy's `original_dst` listener filter.
+                            type: boolean
+                          disableSnat:
+                            description: |-
+                              DisableSnat keeps the client address as the source of the packets sent to the backends, so the backends see the
+                              real client IP and must route their replies back through the agent. With IPVS the agent then sets no nftables SNAT
+                              mark for the port of the virtual server. With envoy it adds envoy's `original_src` listener filter, which the agent
+                              setting `advertisement.disable_snat` also adds to every envoy listener.
+                            type: boolean
+                        type: object
+                    type: object
+                    x-kubernetes-validations:
+                    - message: at most one of f5, starling can be set
+                      rule: '[has(self.f5), has(self.starling)].filter(x, x).size()
+                        <= 1'
+                required:
+                - backendRef
+                type: object
+            required:
+            - port
+            type: object
+            x-kubernetes-validations:
+            - message: exactly one of tcpRouteConfig, udpRouteConfig, httpRoutesConfig,
+                tlsTCPRoutesConfig must be set
+              rule: '[has(self.tcpRouteConfig), has(self.udpRouteConfig), has(self.httpRoutesConfig),
+                has(self.tlsTCPRoutesConfig)].exists_one(x, x)'
+          status:
+            description: status defines the observed state of VirtualServer
+            properties:
+              conditions:
+                description: conditions tell whether flock holds the spec of the object
+                  (Ready) and why not when it doesn't.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                maxItems: 8
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              observedGeneration:
+                description: observedGeneration is the generation of the spec last
+                  written to flock.
+                format: int64
+                minimum: 0
+                type: integer
+              uuid:
+                description: uuid of the flock resource made from this object, empty
+                  until it is created.
+                maxLength: 36
+                type: string
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

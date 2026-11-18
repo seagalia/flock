@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package flock.extensions.route.starling_route.v1;
+
+import "buf/validate/validate.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/extensions/route/starling_route/v1;starling_route";
+
+// Waf inspects the requests and responses of a route with the WAF of the starling agent (coraza), which envoy calls
+// through its ext_proc filter. Without config, the WAF blocks the requests the OWASP Core Rule Set flags.
+message Waf {
+  // Config replaces the default rules of the WAF.
+  oneof config {
+    // DetectOnly runs the default OWASP CRS in DetectionOnly mode. Matching requests are logged and never blocked.
+    bool detect_only = 2;
+
+    // CustomRules is a whole coraza config (SecLang directives) replacing the default one. It can include the embedded
+    // files `@coraza.conf-recommended`, `@crs-setup-lts.conf.example` and `@owasp_crs_lts/*.conf`. The WAF adds its
+    // limits to every config (128 arguments and 32 KiB of response body inspected), so rule ids 9000001-9000099 are
+    // reserved.
+    string custom_rules = 3 [(buf.validate.field).string.max_len = 65536];
+  }
+
+  // RequestBodyLimit is the most bytes of a request body envoy buffers and the WAF inspects, 64 KiB (65536) when 0.
+  // A bigger body is refused with a 413, unless partial_request_body is set. Inspecting a body takes a few ms per KiB
+  // with the flock binary and ten times less with the starling-waf image (RE2). The WAF counts 10 ms per KiB (1 ms with
+  // RE2) and gives envoy more time for a body that needs over 50 ms by this count, up to 10 seconds. Half the cores of a node at most
+  // inspect such bodies at once, so the other requests keep the rest.
+  uint32 request_body_limit = 4 [(buf.validate.field).uint32.lte = 8388608];
+
+  // PartialRequestBody lets a request body over request_body_limit through instead of refusing it. The WAF inspects
+  // its first request_body_limit bytes, and envoy sends the rest to the backend uninspected, so an attack placed after
+  // the limit isn't seen. The request body parsing rules of the coraza recommended config (200002 and 200003) don't
+  // apply to such a cut body, since a JSON or multipart body cut at the limit never parses.
+  bool partial_request_body = 5;
+
+  // SkipResponseBody stops the WAF from inspecting the response bodies of the route, which saves its CPU on routes
+  // serving large or binary content. The WAF still inspects the response headers.
+  bool skip_response_body = 6;
+
+  // FailOpen lets the requests of the route through uninspected when the WAF can't answer them in time, down or
+  // overloaded, where they fail by default. It favours the availability of the route over its protection.
+  bool fail_open = 7;
+}

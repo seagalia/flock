@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package flock.extensions.vs.f5_options.v1;
+
+import "buf/validate/validate.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/extensions/vs/f5_options/v1;f5_vsopts";
+
+// VirtualServerOptions holds the F5 agent options of a virtual server, packed in the `typed_options` field of the
+// tcp, udp, http or tls over tcp route config of `flock.api.config.vs.v1.VirtualServer`.
+//
+// Every string field naming a BIG-IP object takes the full path of an object that already exists on the BIG-IP, for
+// example `/Common/my_irule`. The agent never creates nor changes those objects. A path to a missing object makes the
+// BIG-IP refuse the partition of the virtual server, reported as an error on the virtual server.
+message VirtualServerOptions {
+  // iRules attached to the virtual server after the iRules the agent generates.
+  repeated string irules = 1 [
+    (buf.validate.field).repeated.items.string.pattern = "^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$",
+    (buf.validate.field).repeated.max_items = 64,
+    (buf.validate.field).repeated.items.string.max_len = 255
+  ];
+  // Persistence profile of the virtual server. Without it the virtual server has no persistence, unless its backend
+  // uses a consistent hash lb_policy.
+  string persistence_profile = 2 [
+    (buf.validate.field).string.pattern = "^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$",
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 255
+  ];
+  // Persistence profile used when the persistence profile can't find a record.
+  string fallback_persistence_profile = 3 [
+    (buf.validate.field).string.pattern = "^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$",
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 255
+  ];
+  // WAF (Advanced WAF) policy of the virtual server.
+  string waf_policy = 4 [
+    (buf.validate.field).string.pattern = "^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$",
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 255
+  ];
+  // HTTP profile of an http virtual server, replacing the default one.
+  string http_profile = 5 [
+    (buf.validate.field).string.pattern = "^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$",
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 255
+  ];
+  // Client SSL profile, facing the clients, replacing the one the agent builds from the certificates of the virtual
+  // server.
+  string client_tls_profile = 6 [
+    (buf.validate.field).string.pattern = "^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$",
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 255
+  ];
+  // Server SSL profile, facing the endpoints, replacing the one the agent builds from the TLS settings of the backend.
+  string server_tls_profile = 7 [
+    (buf.validate.field).string.pattern = "^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$",
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 255
+  ];
+  // TCP profile, replacing the default one, for tcp, http and tls over tcp virtual servers.
+  string tcp_profile = 8 [
+    (buf.validate.field).string.pattern = "^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$",
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 255
+  ];
+  // Source address translation of the connections sent to the endpoints. Automap when unset.
+  oneof snat {
+    // Translate to a self IP of the BIG-IP (automap).
+    bool auto = 9;
+    // Keep the client address. The endpoints must route their answers back through the BIG-IP.
+    bool none = 10;
+    // Translate to the addresses of an existing SNAT pool, given by full path.
+    string pool = 11 [
+      (buf.validate.field).string.pattern = "^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$",
+      (buf.validate.field).string.max_len = 255
+    ];
+  }
+  // UDP profile, replacing the default one, for udp virtual servers.
+  string udp_profile = 12 [
+    (buf.validate.field).string.pattern = "^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$",
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 255
+  ];
+}

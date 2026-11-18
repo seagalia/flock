@@ -1,0 +1,56 @@
+version: 2
+
+project_name: flock
+
+# the binaries embed the dashboard, it is built once for all of them, from code and docs generated from the protos
+before:
+  hooks:
+    - make generate
+    - make webui
+
+builds:
+  - id: flock
+    main: ./
+    binary: flock
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s
+      - -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: flock
+    ids:
+      - flock
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+    wrap_in_directory: true
+    files:
+      - LICENSE*
+      - README*
+      - CHANGELOG*
+
+checksum:
+  name_template: checksums.txt
+
+release:
+  github:
+    owner: seagalia
+    name: flock
+  prerelease: auto
+  name_template: '{{ .Tag }}'

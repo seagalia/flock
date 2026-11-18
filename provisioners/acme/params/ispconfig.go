@@ -1,0 +1,45 @@
+package params
+
+import (
+	"errors"
+	"fmt"
+
+	"github.com/go-acme/lego/v5/challenge"
+	"github.com/go-acme/lego/v5/providers/dns/ispconfig"
+)
+
+type IspconfigParams struct {
+	ServerURL          string `mapstructure:"server_url"`
+	Username           string `mapstructure:"username"`
+	Password           string `mapstructure:"password"`
+	PropagationTimeout string `mapstructure:"propagation_timeout"`
+	PollingInterval    string `mapstructure:"polling_interval"`
+	TTL                string `mapstructure:"ttl"`
+	InsecureSkipVerify string `mapstructure:"insecure_skip_verify"`
+}
+
+func (p *IspconfigParams) ToProvider() (challenge.Provider, error) {
+	cnf, err := p.ToConfig()
+	if err != nil {
+		return nil, err
+	}
+	return ispconfig.NewDNSProviderConfig(cnf)
+}
+
+func (p *IspconfigParams) ToConfig() (*ispconfig.Config, error) {
+	cnf := ispconfig.NewDefaultConfig()
+	setString(&cnf.ServerURL, p.ServerURL)
+	setString(&cnf.Username, p.Username)
+	setString(&cnf.Password, p.Password)
+
+	err := errors.Join(
+		setDuration(&cnf.PropagationTimeout, "propagation_timeout", p.PropagationTimeout),
+		setDuration(&cnf.PollingInterval, "polling_interval", p.PollingInterval),
+		setInt(&cnf.TTL, "ttl", p.TTL),
+		setBool(&cnf.InsecureSkipVerify, "insecure_skip_verify", p.InsecureSkipVerify),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("ispconfig: %w", err)
+	}
+	return cnf, nil
+}

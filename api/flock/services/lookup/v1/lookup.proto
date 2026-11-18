@@ -1,0 +1,247 @@
+syntax = "proto3";
+
+package flock.services.lookup.v1;
+
+import "buf/validate/validate.proto";
+import "flock/api/config/agent/v1/agent.proto";
+import "flock/api/config/agent/v1/status.proto";
+import "flock/api/config/core/v1/base.proto";
+import "flock/type/v1/note.proto";
+import "google/protobuf/any.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/services/lookup/v1;svclookup";
+
+// GetLogsRequest is the request message for the GetLogsStream and GetLogsLatest methods.
+message GetLogsRequest {
+  // The uuid of the instance whose agents give their logs. The caller needs the reader role on the instance.
+  string instance_uuid = 1 [(buf.validate.field).string = {min_len: 1}];
+  // The uuid of the agent to retrieve logs from, among the agents of the instance.
+  // If not set, every agent of the instance with the show_logs feature is asked (only the first reachable one for
+  // bridge agents).
+  string agent_uuid = 2;
+}
+
+// LogsStreamResponse is one message of the GetLogsStream stream.
+message LogsStreamResponse {
+  // StreamStarted is the first message of the stream, sent at once so a client holds the stream before the first log
+  // line.
+  message StreamStarted {}
+  // AgentLogLine is a log line of one agent.
+  message AgentLogLine {
+    // The uuid of the agent giving the log.
+    string agent_uuid = 1 [(buf.validate.field).string = {min_len: 1}];
+    // The log line. Can have ansi color codes. An error reaching the agent is sent as a line starting with a red
+    // "Err[<date>]".
+    string log_line = 2 [(buf.validate.field).string.min_len = 1];
+  }
+  // What happened on the stream.
+  oneof event {
+    option (buf.validate.oneof).required = true;
+    // The stream is open, only the first message is this one.
+    StreamStarted started = 2;
+    // The log line and the agent it comes from.
+    AgentLogLine log_stream = 1;
+  }
+}
+
+// LogsResponse is the response message for the GetLogsLatest method.
+message LogsResponse {
+  // LogResponse holds the latest log lines of one agent.
+  message LogResponse {
+    // The uuid of the agent giving the log.
+    string agent_uuid = 1 [(buf.validate.field).string = {min_len: 1}];
+    // Log lines, oldest first. Can have ansi color codes. When the agent can't be reached, a single line starting
+    // with a red "Err[<date>]" gives the error.
+    repeated string log_lines = 2;
+  }
+  // The logs, one entry per agent.
+  repeated LogResponse logs = 1;
+}
+
+// GetStatusRequest is the request message for the GetStatus method.
+message GetStatusRequest {
+  // The uuid of the instance. The caller needs the reader role on the instance.
+  string instance_uuid = 1 [(buf.validate.field).string = {min_len: 1}];
+  // The uuid of the agent to retrieve status from, among the agents of the instance.
+  // If not set, the status comes from the first reachable agent of the instance with the show_status feature.
+  string agent_uuid = 2;
+  // The type url of the resource, one of those ListResourceTypesStatus gives.
+  string type_url = 3 [(buf.validate.field).string = {min_len: 1}];
+  // The uuid of the resource. For flock.api.config.backend.v1.BackendEndpointStats it is the uuid of the backend.
+  string identifier = 4 [(buf.validate.field).string = {min_len: 1}];
+}
+
+// ListStatusRequest is the request message for the ListStatus method.
+message ListStatusRequest {
+  // The uuid of the instance. The caller needs the reader role on the instance.
+  string instance_uuid = 1 [(buf.validate.field).string = {min_len: 1}];
+  // The uuid of the agent to retrieve statuses from, among the agents of the instance.
+  // If not set, the statuses come from the first reachable agent of the instance with the show_status feature.
+  string agent_uuid = 2;
+  // The type url of the resources, one of those ListResourceTypesStatus gives.
+  string type_url = 3 [(buf.validate.field).string = {min_len: 1}];
+}
+
+// ListStatusResponse is the response message for the ListStatus method.
+message ListStatusResponse {
+  // The status of each resource of the type the agent holds.
+  repeated StatusResponse status = 1;
+}
+
+// StatusResponse is the status of one resource on an agent, the response message for the GetStatus method.
+message StatusResponse {
+  // The uuid of the instance given in the request.
+  string instance_uuid = 1 [(buf.validate.field).string = {min_len: 1}];
+  // The agent_uuid given in the request.
+  string agent_uuid = 2 [(buf.validate.field).string = {min_len: 1}];
+  // The version of the resource the agent held before the last one it received, or the received one when it is the
+  // first. For BackendEndpointStats it is the endpoint stats of the backend.
+  google.protobuf.Any previous_resource = 3;
+  // The version of the resource being applied or that failed to apply when the agent knows it, empty once it is
+  // applied. For BackendEndpointStats it is the endpoint stats of the backend.
+  google.protobuf.Any errored_resource = 4;
+  // State is where the agent is in applying the resource.
+  enum State {
+    // The resource is applied.
+    OK = 0;
+    // The agent is adding or updating the resource.
+    ADDING = 1;
+    // The agent is removing the resource.
+    REMOVING = 2;
+    // Applying the resource failed, error gives why. For BackendEndpointStats, some endpoints are unhealthy.
+    ERRORED = 3;
+    // The agent has no state for the resource.
+    UNKNOWN = 4;
+  }
+  // The current state of the resource.
+  State state = 5;
+  // Why the resource failed to apply when state is ERRORED, empty otherwise.
+  string error = 6;
+  // Notes the agent gives on how it applied the resource, for example an approximation or the engine serving it.
+  // The resource is applied with them.
+  repeated flock.type.v1.Note notes = 7;
+}
+
+// ListAgentRequest is the request message for the ListAgent method.
+message ListAgentRequest {
+  // The uuid of the instance. The caller needs the reader role on the instance.
+  string instance_uuid = 1 [(buf.validate.field).string.min_len = 1];
+}
+
+// ListAgentResponse is the response to list agents.
+message ListAgentResponse {
+  // The agents of the instance.
+  repeated flock.api.config.agent.v1.Agent agents = 1;
+}
+
+// ListInstanceNodesRequest is the request message for the ListInstanceNodes method.
+message ListInstanceNodesRequest {
+  // The uuid of the instance. The caller needs the reader role on the instance.
+  string instance_uuid = 1 [(buf.validate.field).string.min_len = 1];
+}
+
+// InstanceNode is a node an agent of the instance announced when it connected to a controller.
+message InstanceNode {
+  // The node as the agent announced it, with the extensions it supports.
+  flock.api.config.core.v1.Node node = 1;
+  // When an agent last connected to a controller with this node. It is refreshed every 30 seconds while the agent is
+  // connected.
+  google.protobuf.Timestamp last_seen = 2;
+  // The uuid of the declared agent whose name equals the CN of the certificate it announced the node with.
+  string agent_uuid = 3;
+  // The name of the agent that announced the node, the CN of its certificate.
+  string name = 4;
+}
+
+// ReadAgentRequest is the request message for the ReadAgent method.
+message ReadAgentRequest {
+  // The uuid of the agent to read.
+  string agent_uuid = 1 [(buf.validate.field).string = {min_len: 1}];
+}
+
+// ReadAgentResponse is the response message for the ReadAgent method.
+message ReadAgentResponse {
+  // The agent.
+  flock.api.config.agent.v1.Agent agent = 1;
+  // The uuid of the instance the agent belongs to.
+  string instance_uuid = 2;
+}
+
+// ListInstanceNodesResponse is the response to list the nodes of an instance.
+message ListInstanceNodesResponse {
+  // The nodes of the instance, one per node name.
+  repeated InstanceNode nodes = 1;
+}
+
+// ListResourceTypesStatusResponse is the response message for the ListResourceTypesStatus method.
+message ListResourceTypesStatusResponse {
+  // The type urls of the resources whose status the agent can give.
+  repeated string resource_types = 1;
+}
+
+// ListResourceTypesRequest is the request message for the ListResourceTypesStatus method.
+message ListResourceTypesRequest {
+  // The uuid of the instance. The caller needs the reader role on the instance.
+  string instance_uuid = 1 [(buf.validate.field).string.min_len = 1];
+  // The uuid of the agent to ask, among the agents and provisioners of the instance. When set, the types that agent
+  // reports, otherwise the first reachable load balancer agent.
+  string agent_uuid = 2;
+}
+
+// ListAgentStatusRequest is the request message for the ListAgentStatus method.
+message ListAgentStatusRequest {
+  // The uuid of the instance. The caller needs the reader role on the instance.
+  string instance_uuid = 1 [(buf.validate.field).string.min_len = 1];
+  // The uuid of the agent to retrieve status from, among the agents of the instance.
+  // If not set, every agent of the instance with the show_status feature is asked (only the first one for bridge
+  // agents).
+  string agent_uuid = 2;
+  // Fill the announcing vips of each agent status with the VIPs the agent announces. A caller who is not admin only
+  // sees the VIPs they can read.
+  bool show_announcing_vips = 3;
+}
+
+// GetAgentStatusResponse is the status of one agent.
+message GetAgentStatusResponse {
+  // The uuid of the instance.
+  string instance_uuid = 1 [(buf.validate.field).string.min_len = 1];
+  // The uuid of the agent.
+  string agent_uuid = 2 [(buf.validate.field).string.min_len = 1];
+  // The current state of the agent. When the agent can't be reached, it is an ERRORED state (UNKNOWN for a bridge
+  // agent) with the error in its details.
+  api.config.agent.v1.AgentStatus agent_status = 3;
+}
+
+// ListAgentStatusResponse is the response message for the ListAgentStatus method.
+message ListAgentStatusResponse {
+  // The status of each agent asked.
+  repeated GetAgentStatusResponse agent_status = 1;
+}
+
+// Lookup gives the logs and statuses the agents of an instance report, the controller calls the agents for the
+// client. Every method needs the reader role on the instance.
+service Lookup {
+  // GetLogsStream streams the log lines the agents write from the time of the call, until the client cancels, after a
+  // first started message.
+  rpc GetLogsStream(GetLogsRequest) returns (stream LogsStreamResponse) {}
+  // GetLogsLatest returns the latest log lines kept by one agent, the given one or else a single agent among those of
+  // the instance with the show_logs feature.
+  rpc GetLogsLatest(GetLogsRequest) returns (LogsResponse) {}
+  // ListStatus returns the status of every resource of a type on an agent.
+  rpc ListStatus(ListStatusRequest) returns (ListStatusResponse) {}
+  // GetStatus returns the status of a resource on an agent.
+  rpc GetStatus(GetStatusRequest) returns (StatusResponse) {}
+  // ListAgent returns the agents of the instance.
+  rpc ListAgent(ListAgentRequest) returns (ListAgentResponse) {}
+  // ReadAgent returns one agent and the instance it belongs to. The caller needs the reader role on that instance.
+  rpc ReadAgent(ReadAgentRequest) returns (ReadAgentResponse) {}
+  // ListInstanceNodes returns the nodes that agents of the instance announced to the controllers, with the extensions
+  // each one supports. A node stays listed after its agent disconnects, last_seen tells how recent it is.
+  rpc ListInstanceNodes(ListInstanceNodesRequest) returns (ListInstanceNodesResponse) {}
+  // ListAgentStatus returns the status of the agents of the instance.
+  rpc ListAgentStatus(ListAgentStatusRequest) returns (ListAgentStatusResponse) {}
+  // ListResourceTypesStatus returns the type urls of the resources whose status the first reachable agent of the
+  // instance can give.
+  rpc ListResourceTypesStatus(ListResourceTypesRequest) returns (ListResourceTypesStatusResponse) {}
+}

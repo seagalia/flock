@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package flock.extensions.backend.f5_options.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/duration.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/extensions/backend/f5_options/v1;f5_backendopts";
+
+// BackendOptions holds the F5 agent options of a backend, packed in the `typed_options` field of
+// `flock.api.config.backend.v1.Backend`.
+message BackendOptions {
+  // Load balancing mode of the BIG-IP pools of the backend, an AS3 `loadBalancingMode` value. It replaces the mode the
+  // agent maps from lb_policy.
+  string lb_mode = 1 [
+    (buf.validate.field).string = {
+      in: [
+        "dynamic-ratio-member",
+        "dynamic-ratio-node",
+        "fastest-app-response",
+        "fastest-node",
+        "least-connections-member",
+        "least-connections-node",
+        "least-sessions",
+        "observed-member",
+        "observed-node",
+        "predictive-member",
+        "predictive-node",
+        "ratio-least-connections-member",
+        "ratio-least-connections-node",
+        "ratio-member",
+        "ratio-node",
+        "ratio-session",
+        "round-robin",
+        "weighted-least-connections-member",
+        "weighted-least-connections-node"
+      ]
+    },
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE
+  ];
+  // Time during which a member coming back up receives a growing share of the traffic. Rounded up to seconds.
+  google.protobuf.Duration slow_ramp_time = 2;
+  // Monitors replacing the one the agent builds from the health check of the backend, given by full path of existing
+  // BIG-IP monitors (for example `/Common/my_monitor`). The agent never creates nor changes them.
+  repeated string monitors = 3 [(buf.validate.field).repeated = {
+    max_items: 64
+    items: {
+      string: {
+        pattern: "^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$"
+        max_len: 255
+      }
+    }
+  }];
+}

@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package flock.services.core.v1;
+
+import "buf/validate/validate.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/services/core/v1;svccore";
+
+
+// UuidRequest is the request message of the calls that read or delete one resource by its UUID.
+message UuidRequest {
+  // UUID is the UUID of the resource to act on.
+  string UUID = 1 [(buf.validate.field).string = {min_len: 1}];
+}
+

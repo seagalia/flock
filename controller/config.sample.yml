@@ -1,0 +1,43 @@
+log:
+  level: debug
+server:
+  permissions: ~
+  jwt_maker:
+    alg: RS256
+    private_key: |
+      -----BEGIN RSA PRIVATE KEY-----
+      add one
+      -----END RSA PRIVATE KEY-----
+  login:
+    type: "basic"
+    basic_auth_options:
+      - username: "nobody"
+        password: "nobody"
+        groups: [ "nobody" ]
+  #  type: "oidc"
+  #  oidc_options:
+  #    issuer_url: "https://idp.example.com/realms/flock"
+  #    client_id: "flock"
+  #    scopes: [ "openid", "profile", "email" ]
+  #    username_claim: "preferred_username"
+  #    groups_claim: "groups"
+  #    access_token:
+  #      audience: "flock-api"
+  #      username_claim: "sub"
+  tls:
+    cert_file: ./cert.crt
+    key_file: ./key.key
+    ca_file: ./ca.crt
+  dashboard:
+    enabled: true
+  listen_addr: 0.0.0.0:8443
+mtls:
+  cert_file: ./cert.crt
+  ca_file: ./ca.crt
+  key_file: ./key.key
+
+store:
+  sql:
+    type: sqlite
+    dsn: ./flock.db
+    secret_key: change-me

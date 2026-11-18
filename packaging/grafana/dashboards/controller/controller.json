@@ -1,0 +1,1410 @@
+{
+  "uid": "controller",
+  "title": "Controller",
+  "tags": [
+    "flock",
+    "controller"
+  ],
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-3h",
+    "to": "now"
+  },
+  "schemaVersion": 38,
+  "version": 1,
+  "links": [
+    {
+      "asDropdown": true,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [
+        "flock"
+      ],
+      "targetBlank": false,
+      "title": "flock dashboards",
+      "type": "dashboards"
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "label": "Datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {},
+        "options": [],
+        "hide": 0,
+        "refresh": 1,
+        "regex": ""
+      },
+      {
+        "name": "controller",
+        "label": "Controller",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(flock_controller_dbstore_db_status{instance_uuid=\"\"}, instance)",
+        "query": {
+          "query": "label_values(flock_controller_dbstore_db_status{instance_uuid=\"\"}, instance)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "hide": 0,
+        "multi": true,
+        "includeAll": true,
+        "sort": 1,
+        "current": {},
+        "options": [],
+        "regex": "",
+        "allValue": ".*"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Overview",
+      "collapsed": false,
+      "id": 1,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Controllers",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "w": 6,
+        "h": 5,
+        "x": 0,
+        "y": 1
+      },
+      "targets": [
+        {
+          "expr": "count(flock_controller_dbstore_db_status{instance=~\"$controller\",instance_uuid=\"\"})",
+          "legendFormat": "",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "text"
+              }
+            ]
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "id": 2
+    },
+    {
+      "type": "stat",
+      "title": "Database Down",
+      "description": "Controllers that can't reach their database",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "w": 6,
+        "h": 5,
+        "x": 6,
+        "y": 1
+      },
+      "targets": [
+        {
+          "expr": "count(flock_controller_dbstore_db_status{instance=~\"$controller\",instance_uuid=\"\"} == 0)",
+          "legendFormat": "",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 1,
+                "color": "red"
+              }
+            ]
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "id": 3
+    },
+    {
+      "type": "stat",
+      "title": "Server Error Share",
+      "description": "Calls answered with Unknown, DeadlineExceeded, ResourceExhausted, Aborted, Internal, Unavailable, DataLoss, Unimplemented",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "w": 6,
+        "h": 5,
+        "x": 12,
+        "y": 1
+      },
+      "targets": [
+        {
+          "expr": "100 * sum(rate(grpc_server_handled_total{instance=~\"$controller\",instance_uuid=\"\",grpc_code=~\"Unknown|DeadlineExceeded|ResourceExhausted|Aborted|Internal|Unavailable|DataLoss|Unimplemented\"}[$__rate_interval])) / sum(rate(grpc_server_handled_total{instance=~\"$controller\",instance_uuid=\"\"}[$__rate_interval]))",
+          "legendFormat": "",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 1,
+                "color": "yellow"
+              },
+              {
+                "value": 5,
+                "color": "red"
+              }
+            ]
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "id": 4
+    },
+    {
+      "type": "stat",
+      "title": "Unhealthy Agents",
+      "description": "Agents the controller can't reach",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "w": 6,
+        "h": 5,
+        "x": 18,
+        "y": 1
+      },
+      "targets": [
+        {
+          "expr": "sum(sum by(instance_uuid)(controller_proxmetrics_agents_total{instance_uuid!=\"\"}) - sum by(instance_uuid)(controller_proxmetrics_agents_healthy{instance_uuid!=\"\"}))",
+          "legendFormat": "",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 1,
+                "color": "red"
+              }
+            ]
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "id": 5
+    },
+    {
+      "type": "row",
+      "title": "API",
+      "collapsed": false,
+      "id": 6,
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Calls per Second by Service",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 7
+      },
+      "targets": [
+        {
+          "expr": "sum by(grpc_service)(rate(grpc_server_handled_total{instance=~\"$controller\",instance_uuid=\"\"}[$__rate_interval]))",
+          "legendFormat": "{{grpc_service}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "min": 0,
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 7
+    },
+    {
+      "type": "timeseries",
+      "title": "Errors per Second by Code",
+      "description": "Every code but OK, client errors included",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 12,
+        "y": 7
+      },
+      "targets": [
+        {
+          "expr": "sum by(grpc_code)(rate(grpc_server_handled_total{instance=~\"$controller\",instance_uuid=\"\",grpc_code!=\"OK\"}[$__rate_interval])) > 0",
+          "legendFormat": "{{grpc_code}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "min": 0,
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 8
+    },
+    {
+      "type": "timeseries",
+      "title": "Server Errors by Method",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 15
+      },
+      "targets": [
+        {
+          "expr": "sum by(grpc_service, grpc_method, grpc_code)(rate(grpc_server_handled_total{instance=~\"$controller\",instance_uuid=\"\",grpc_code=~\"Unknown|DeadlineExceeded|ResourceExhausted|Aborted|Internal|Unavailable|DataLoss|Unimplemented\"}[$__rate_interval])) > 0",
+          "legendFormat": "{{grpc_method}} {{grpc_code}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "min": 0,
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 9
+    },
+    {
+      "type": "timeseries",
+      "title": "Open Streams by Method",
+      "description": "Streams started and not finished yet. DeltaAggregatedResources counts the agents subscribed to their configuration.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 12,
+        "y": 15
+      },
+      "targets": [
+        {
+          "expr": "sum by(grpc_method)(grpc_server_started_total{instance=~\"$controller\",instance_uuid=\"\",grpc_type!=\"unary\"}) - sum by(grpc_method)(grpc_server_handled_total{instance=~\"$controller\",instance_uuid=\"\",grpc_type!=\"unary\"})",
+          "legendFormat": "{{grpc_method}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 10
+    },
+    {
+      "type": "row",
+      "title": "Authentication and Authorization",
+      "collapsed": false,
+      "id": 11,
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Logins per Second",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 24
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(login_success{instance=~\"$controller\",instance_uuid=\"\"}[$__rate_interval]))",
+          "legendFormat": "success",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        },
+        {
+          "expr": "sum(rate(login_failure{instance=~\"$controller\",instance_uuid=\"\"}[$__rate_interval]))",
+          "legendFormat": "failure",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "min": 0,
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 12
+    },
+    {
+      "type": "timeseries",
+      "title": "Login Failures by User",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 12,
+        "y": 24
+      },
+      "targets": [
+        {
+          "expr": "sum by(username)(rate(login_failure{instance=~\"$controller\",instance_uuid=\"\"}[$__rate_interval])) > 0",
+          "legendFormat": "{{username}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "min": 0,
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 13
+    },
+    {
+      "type": "timeseries",
+      "title": "Authorization Failures by User",
+      "description": "Calls refused because the user has no permission on the resource",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 32
+      },
+      "targets": [
+        {
+          "expr": "sum by(username, resource_type)(rate(authorization_failure{instance=~\"$controller\",instance_uuid=\"\"}[$__rate_interval])) > 0",
+          "legendFormat": "{{username}} on {{resource_type}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "min": 0,
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 14
+    },
+    {
+      "type": "table",
+      "title": "Locked Out Users",
+      "description": "Users locked out after too many failed logins",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 12,
+        "y": 32
+      },
+      "targets": [
+        {
+          "expr": "max by(username)(login_locked_out{instance=~\"$controller\",instance_uuid=\"\"}) == 1",
+          "legendFormat": "",
+          "format": "table",
+          "instant": true,
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "mappings": [],
+          "noValue": "none"
+        },
+        "overrides": []
+      },
+      "options": {},
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "job": true,
+              "instance": true,
+              "exported_instance": true,
+              "agent_uuid": true,
+              "agent_type": true,
+              "agent_host": true,
+              "target": true,
+              "instance_uuid": true,
+              "instance_name": true
+            },
+            "renameByName": {
+              "username": "User",
+              "Value": "Locked"
+            }
+          }
+        }
+      ],
+      "id": 15
+    },
+    {
+      "type": "row",
+      "title": "Agents",
+      "collapsed": false,
+      "id": 16,
+      "gridPos": {
+        "x": 0,
+        "y": 40,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Unhealthy Agents by Instance",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 41
+      },
+      "targets": [
+        {
+          "expr": "(sum by(instance_uuid)(controller_proxmetrics_agents_total{instance_uuid!=\"\"}) - sum by(instance_uuid)(controller_proxmetrics_agents_healthy{instance_uuid!=\"\"})) * on(instance_uuid) group_left(name) label_replace(max by(uuid, name)(flock_controller_store_info{type_url=\"type.googleapis.com/flock.api.config.instance.v1.Instance\"}), \"instance_uuid\", \"$1\", \"uuid\", \"(.*)\")",
+          "legendFormat": "{{name}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 17
+    },
+    {
+      "type": "table",
+      "title": "Agents the Controller Can't Scrape",
+      "description": "Agents whose metrics the controller failed to fetch on the last scrape",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 12,
+        "y": 41
+      },
+      "targets": [
+        {
+          "expr": "(max by(instance_uuid, agent_name, error)(controller_proxmetrics_scrape_error{instance_uuid!=\"\"})) * on(instance_uuid) group_left(name) label_replace(max by(uuid, name)(flock_controller_store_info{type_url=\"type.googleapis.com/flock.api.config.instance.v1.Instance\"}), \"instance_uuid\", \"$1\", \"uuid\", \"(.*)\")",
+          "legendFormat": "",
+          "format": "table",
+          "instant": true,
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "mappings": [],
+          "noValue": "none"
+        },
+        "overrides": []
+      },
+      "options": {},
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "job": true,
+              "instance": true,
+              "exported_instance": true,
+              "agent_uuid": true,
+              "agent_type": true,
+              "agent_host": true,
+              "target": true,
+              "instance_uuid": true,
+              "instance_name": true
+            },
+            "renameByName": {
+              "name": "Instance",
+              "agent_name": "Agent",
+              "error": "Error"
+            }
+          }
+        }
+      ],
+      "id": 18
+    },
+    {
+      "type": "row",
+      "title": "Database",
+      "collapsed": false,
+      "id": 19,
+      "gridPos": {
+        "x": 0,
+        "y": 49,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Database Status",
+      "description": "1 when the controller reaches its database",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 50
+      },
+      "targets": [
+        {
+          "expr": "flock_controller_dbstore_db_status{instance=~\"$controller\",instance_uuid=\"\"}",
+          "legendFormat": "{{instance}} ",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 20
+    },
+    {
+      "type": "timeseries",
+      "title": "Connections",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 12,
+        "y": 50
+      },
+      "targets": [
+        {
+          "expr": "go_sql_in_use_connections{instance=~\"$controller\",instance_uuid=\"\"}",
+          "legendFormat": "{{instance}} in use",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        },
+        {
+          "expr": "go_sql_idle_connections{instance=~\"$controller\",instance_uuid=\"\"}",
+          "legendFormat": "{{instance}} idle",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        },
+        {
+          "expr": "go_sql_max_open_connections{instance=~\"$controller\",instance_uuid=\"\"}",
+          "legendFormat": "{{instance}} max open",
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 21
+    },
+    {
+      "type": "timeseries",
+      "title": "Connection Waits per Second",
+      "description": "Queries that waited for a free connection of the pool",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 58
+      },
+      "targets": [
+        {
+          "expr": "rate(go_sql_wait_count_total{instance=~\"$controller\",instance_uuid=\"\"}[$__rate_interval])",
+          "legendFormat": "{{instance}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "min": 0,
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 22
+    },
+    {
+      "type": "timeseries",
+      "title": "Time Waiting for a Connection",
+      "description": "Seconds spent waiting for a connection, per second",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 12,
+        "y": 58
+      },
+      "targets": [
+        {
+          "expr": "rate(go_sql_wait_duration_seconds_total{instance=~\"$controller\",instance_uuid=\"\"}[$__rate_interval])",
+          "legendFormat": "{{instance}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 23
+    },
+    {
+      "type": "row",
+      "title": "Resources and Process",
+      "collapsed": false,
+      "id": 24,
+      "gridPos": {
+        "x": 0,
+        "y": 66,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Resources by Type",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 67
+      },
+      "targets": [
+        {
+          "expr": "count by(kind)(label_replace(max by(type_url, uuid)(flock_controller_store_info{instance=~\"$controller\",instance_uuid=\"\"}), \"kind\", \"$1\", \"type_url\", \".*[.]([A-Za-z]+)$\"))",
+          "legendFormat": "{{kind}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 25
+    },
+    {
+      "type": "timeseries",
+      "title": "Memory",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 12,
+        "y": 67
+      },
+      "targets": [
+        {
+          "expr": "process_resident_memory_bytes{instance=~\"$controller\",instance_uuid=\"\"}",
+          "legendFormat": "{{instance}} resident",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        },
+        {
+          "expr": "go_memstats_heap_inuse_bytes{instance=~\"$controller\",instance_uuid=\"\"}",
+          "legendFormat": "{{instance}} heap in use",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 26
+    },
+    {
+      "type": "timeseries",
+      "title": "CPU",
+      "description": "100% is one core",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 75
+      },
+      "targets": [
+        {
+          "expr": "100 * rate(process_cpu_seconds_total{instance=~\"$controller\",instance_uuid=\"\"}[$__rate_interval])",
+          "legendFormat": "{{instance}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 27
+    },
+    {
+      "type": "timeseries",
+      "title": "Goroutines",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 12,
+        "y": 75
+      },
+      "targets": [
+        {
+          "expr": "go_goroutines{instance=~\"$controller\",instance_uuid=\"\"}",
+          "legendFormat": "{{instance}} ",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 28
+    }
+  ]
+}

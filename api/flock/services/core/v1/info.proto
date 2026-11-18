@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package flock.services.core.v1;
+
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/services/core/v1;svccore";
+
+// ListResourceTypesResponse is the response message for the ListResourceTypes method.
+message ListResourceTypesResponse {
+  // ResourceTypes is the list of resource type URLs, e.g. `type.googleapis.com/flock.api.config.backend.v1.Backend`.
+  repeated string resource_types = 1;
+}
+
+// ControllerFeatures tells which optional features the controller runs with.
+message ControllerFeatures {
+  // IpamEnabled is true when the controller allocates the IPs of the VIPs (ipam not disabled), false when the IP of a
+  // VIP must be given by the client.
+  bool ipam_enabled = 1;
+}
+
+// Info is the service that provides information about the controller API.
+service Info {
+  // ListResourceTypes returns the type URLs of the resources the controller manages, which are backends, instances,
+  // VIPs, virtual servers and certificates.
+  rpc ListResourceTypes (google.protobuf.Empty) returns (ListResourceTypesResponse) {}
+  // GetControllerFeatures returns the optional features of the controller. Any authenticated user can call it.
+  rpc GetControllerFeatures (google.protobuf.Empty) returns (ControllerFeatures) {}
+}

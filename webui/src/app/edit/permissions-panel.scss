@@ -1,0 +1,35 @@
+section {
+  margin-top: 16px;
+  h3 {
+    margin: 8px 0;
+    font-weight: 500;
+  }
+}
+.member {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0;
+  .name {
+    flex: 1;
+  }
+  .type {
+    color: var(--mat-sys-on-surface-variant);
+  }
+  input {
+    flex: 1;
+  }
+}
+.reason {
+  color: var(--mat-sys-on-surface-variant);
+}
+.problem {
+  color: var(--mat-sys-error);
+}
+.role-field,
+.type-field {
+  width: 130px;
+}
+.name-field {
+  flex: 1;
+}

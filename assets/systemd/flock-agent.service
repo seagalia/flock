@@ -1,0 +1,44 @@
+### BEGIN INIT INFO
+# Provides:          flock-agent
+# Required-Start:    $local_fs $remote_fs
+# Required-Stop:     $local_fs $remote_fs
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: flock-agent
+# Description:       distributed, highly available, load balancing proxy
+### END INIT INFO
+
+[Unit]
+Description=flock-agent
+Documentation=https://www.envoyproxy.io/docs.html
+After=network-online.target
+Wants=network-online.target
+StartLimitBurst=3
+StartLimitIntervalSec=10
+
+[Service]
+User=root
+Group=root
+Environment="CONFIG_FILE=/etc/flock-agent/config.yaml"
+ExecStart=/vb_shared/flock/flock/flock agent starling start --config-path ${CONFIG_FILE}
+ExecReload=/bin/kill -HUP $MAINPID
+ExecStop=/bin/kill -TERM $MAINPID
+Restart=always
+RestartSec=30
+# the agent splits its cgroup to hold itself to 20% of the memory (40% with the embedded WAF) and to give envoy and
+# starling-waf, when it runs them, a cgroup each
+Delegate=yes
+# only allow first cpu
+AllowedCPUs=0
+# envoy and starling-waf run by the agent inherit it, and envoy.max_connections (50000 by default) should stay under
+# half of it
+LimitNOFILE=100000
+Restart=on-failure
+RestartSec=2
+TasksMax=infinity
+OOMScoreAdjust=500
+StandardOutput=append:/var/log/flock/agent.stdout.log
+StandardError=append:/var/log/flock/agent.stderr.log
+
+[Install]
+WantedBy=multi-user.target

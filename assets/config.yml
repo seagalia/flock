@@ -1,0 +1,19 @@
+log:
+  level: debug
+controller:
+  addr: 127.0.0.1:8443
+  server_name: flock_controller_server
+  instance_uuid: 1
+envoy:
+  service:
+    config_file_path: /etc/envoy/envoy.yaml
+    pid_file: /run/envoy.pid
+    start_command: ["systemctl", "restart", "envoy"]
+    get_pid_command: ["systemctl", "show", "-p", "MainPID", "--value", "envoy"]
+    stdout_file_path: /var/log/envoy/envoy.stdout.log
+    stderr_file_path: /var/log/envoy/envoy.stderr.log
+tls:
+  cert_file: ./cert.crt
+  key_file: ./key.key
+  ca_file: ./ca.crt
+announce: {}

@@ -1,0 +1,231 @@
+syntax = "proto3";
+
+package flock.api.config.core.v1;
+
+import "buf/validate/validate.proto";
+import "flock/api/config/core/v1/base.proto";
+import "flock/type/v1/http.proto";
+import "flock/type/v1/range.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/struct.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/api/config/core/v1;core";
+
+
+
+// Health check run by the agent against every endpoint of a backend. Only healthy endpoints receive traffic.
+message HealthCheck {
+  // The time to wait for a health check response. If the timeout is reached the
+  // health check attempt will be considered a failure.
+  // Defaults to 30s if not specified.
+  google.protobuf.Duration timeout = 1 [(buf.validate.field).duration = {
+    gt {}
+  }, (buf.validate.field).required = true];
+
+  // The interval between health checks of an endpoint.
+  // Defaults to 10s if not specified.
+  google.protobuf.Duration interval = 2 [(buf.validate.field).duration = {
+    gt {}
+  }, (buf.validate.field).required = true];
+
+  // The number of consecutive failed health checks required before a host is marked
+  // unhealthy.
+  // Defaults to 3 if not specified.
+  uint32 unhealthy_threshold = 3 [(buf.validate.field).uint32 = {gt: 0}];
+
+  // The number of successful health checks required before an unhealthy host is marked
+  // healthy again. Note that during startup, only a single successful health check is
+  // required to mark a host healthy.
+  // Defaults to 1 if not specified.
+  uint32 healthy_threshold = 4 [(buf.validate.field).uint32 = {gt: 0}];
+
+  // Port to health check instead of the endpoint's own port. 0 (default) checks the endpoint port.
+  // The UDP health check with `receive` set ignores it.
+  uint32 alt_port = 5;
+
+  // Kind of health check to run, exactly one must be set.
+  oneof health_checker {
+    option (buf.validate.oneof).required = true;
+
+    // HTTP health check.
+    HttpHealthCheck http_health_check = 8;
+
+    // TCP health check.
+    TcpHealthCheck tcp_health_check = 9;
+
+    // gRPC health check.
+    GrpcHealthCheck grpc_health_check = 11;
+
+    // No health check, every endpoint is considered healthy.
+    NoHealthCheck no_health_check = 13;
+
+    // Health check run by a program declared in the agent configuration.
+    PluginHealthCheck plugin_health_check = 14;
+
+    // UDP health check.
+    UdpHealthCheck udp_health_check = 15;
+  }
+
+  // The "unhealthy interval" is a health check interval that is used for hosts that are marked as
+  // unhealthy. As soon as the host is marked as healthy, Flock will shift back to using the
+  // standard health check interval that is defined.
+  //
+  // The default value for "unhealthy interval" is the same as "interval".
+  google.protobuf.Duration unhealthy_interval = 6 [(buf.validate.field).duration = {gt {}}];
+  // Runs the health check over TLS, verified with the `ca` and `sni` of the backend. Applies to the HTTP, TCP and gRPC
+  // health checks and is passed to plugins. The UDP health check ignores it. Defaults to false.
+  bool enable_tls = 7;
+}
+
+// Bytes sent or expected by a health check, given as text or as binary. Exactly one must be set.
+message HealthCheckPayload {
+  // Encoding of the payload.
+  oneof payload {
+    option (buf.validate.oneof).required = true;
+
+    // Text payload, used as its UTF-8 bytes.
+    string text = 1 [(buf.validate.field).string = {
+      min_len: 1
+      max_len: 4096
+    }];
+
+    // Binary payload.
+    bytes binary = 2 [(buf.validate.field).bytes.max_len = 4096];
+  }
+}
+
+// HTTP request method. METHOD_UNSPECIFIED means GET.
+enum RequestMethod {
+  METHOD_UNSPECIFIED = 0;
+  GET = 1;
+  HEAD = 2;
+  POST = 3;
+  PUT = 4;
+  DELETE = 5;
+  CONNECT = 6;
+  OPTIONS = 7;
+  TRACE = 8;
+  PATCH = 9;
+}
+
+// HTTP health check. The request goes to `http://<endpoint ip>:<port><path>`, or https when `enable_tls` is set.
+message HttpHealthCheck {
+
+  // The value of the host header in the HTTP health check request. If
+  // left empty (default value), the endpoint address (`ip:port`) is used.
+  string host = 1 [(buf.validate.field).string = {well_known_regex: KNOWN_REGEX_HTTP_HEADER_VALUE strict: false max_len: 253}, (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Specifies the HTTP path that will be requested during health checking. For example
+  // */healthcheck*. Defaults to `/`.
+  string path = 2
+  [(buf.validate.field).string = {min_len: 1 max_len: 2048 well_known_regex: KNOWN_REGEX_HTTP_HEADER_VALUE strict: false}];
+
+  // Body of the health check request. Empty (default) sends no body.
+  HealthCheckPayload send = 3;
+
+  // When set, the response body must contain these bytes for the check to succeed.
+  HealthCheckPayload receive = 4;
+
+  // Specifies a list of HTTP headers that should be added to each request that is sent to the
+  // health checked backend.
+  repeated HeaderValueOption request_headers_to_add = 5 [(buf.validate.field).repeated = {max_items: 1000}];
+
+  // Range of HTTP response statuses considered healthy, following the half-open semantics of
+  // Int64Range (start included, end excluded).
+  // Defaults to [200, 300).
+  flock.type.v1.Int64Range expected_statuses = 6;
+
+  // Use specified application protocol for health checks. Defaults to HTTP1.
+  type.v1.CodecClientType codec_client_type = 7 [(buf.validate.field).enum = {defined_only: true}];
+
+  // HTTP Method that will be used for health checking, default is "GET".
+  // GET, HEAD, POST, PUT, DELETE, OPTIONS, TRACE, PATCH methods are supported, the body comes from `send`.
+  // CONNECT method is disallowed because it is not appropriate for health check request.
+  // If a response outside [200, 300) is expected by the method, it needs to be set in expected_statuses.
+  RequestMethod method = 8 [(buf.validate.field).enum = {defined_only: true not_in: 6}];
+}
+
+// TCP health check. The check succeeds when the connection opens and the expected bytes are received.
+message TcpHealthCheck {
+  // Bytes written once connected. Empty payloads imply a connect-only health check.
+  HealthCheckPayload send = 1;
+
+  // Blocks the response must start with, read one after the other. Each one must match the next bytes received
+  // exactly, waiting up to `timeout` for them. Empty skips the response check.
+  repeated HealthCheckPayload receive = 2 [(buf.validate.field).repeated.max_items = 16];
+}
+
+// `grpc.health.v1.Health
+// <https://github.com/grpc/grpc/blob/master/src/proto/grpc/health/v1/health.proto>`_-based
+// healthcheck. See `gRPC doc <https://github.com/grpc/grpc/blob/master/doc/health-checking.md>`_
+// for details. The check succeeds when the endpoint answers SERVING.
+message GrpcHealthCheck {
+  // An optional service name parameter which will be sent to gRPC service in
+  // `grpc.health.v1.HealthCheckRequest
+  // <https://github.com/grpc/grpc/blob/master/src/proto/grpc/health/v1/health.proto#L20>`_.
+  // message. See `gRPC health-checking overview
+  // <https://github.com/grpc/grpc/blob/master/doc/health-checking.md>`_ for more information.
+  string service_name = 1 [(buf.validate.field).string.max_len = 253];
+
+  // The value of the :authority header in the gRPC health check request.
+  string authority = 2
+  [(buf.validate.field).string = {well_known_regex: KNOWN_REGEX_HTTP_HEADER_VALUE strict: false max_len: 253}, (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+}
+
+// No health check. Every endpoint of the backend is always considered healthy.
+message NoHealthCheck {
+
+}
+
+// PluginHealthCheckInfoArgs describes one argument of a plugin health check.
+message PluginHealthCheckInfoArgs {
+  // Name of the argument.
+  string name = 1;
+  // What the argument does.
+  string description = 2;
+}
+
+// PluginHealthCheckInfo is the message that describes a plugin health check.
+message PluginHealthCheckInfo {
+  // Name of the plugin, the value to put in PluginHealthCheck.name.
+  string name = 1;
+  // What the plugin checks.
+  string description = 2;
+  // Arguments the plugin accepts.
+  repeated PluginHealthCheckInfoArgs args = 3;
+}
+
+// Health check run by a plugin of the agent, one of the plugin_health_checks the agent declares. The endpoint is
+// healthy when the plugin reports success before the timeout.
+message PluginHealthCheck {
+  // The name of the plugin to use for health checking, as declared in the agent configuration. The check fails when
+  // the agent has no plugin of that name.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 253
+  }];
+  // The options to pass to the plugin.
+  google.protobuf.Struct options = 2;
+}
+
+// UDP health check.
+// It has 2 behaviors:
+// - if receive is not empty, it sends the payload and checks that the datagrams received back match receive.
+// - (Weak method) if receive is empty, it first pings the host with ICMP and marks it unhealthy when there is no
+//   reply. Otherwise it sends the payload and waits up to `timeout` for an ICMP unreachable message about the host or
+//   port. The endpoint is unhealthy when one arrives and healthy when none does.
+message UdpHealthCheck {
+  // Payload to send. Something is always sent, so the agent sends a default payload when it is left empty.
+  HealthCheckPayload send = 1;
+  // Expected datagrams. Each block is read from the next datagram received, waiting up to `timeout`, and must equal
+  // its first bytes.
+  repeated HealthCheckPayload receive = 2 [(buf.validate.field).repeated.max_items = 16];
+  // PingTimeout specifies the timeout of the ICMP ping of the weak method. Defaults to 5s.
+  google.protobuf.Duration ping_timeout = 3 [(buf.validate.field).duration = {
+    gt {}
+  }, (buf.validate.field).required = true];
+  // Delay is how long each read of the ICMP socket waits before reading again, in the weak method. Defaults to 1s.
+  google.protobuf.Duration delay = 4 [(buf.validate.field).duration = {
+    gt {}
+  }, (buf.validate.field).required = true];
+}

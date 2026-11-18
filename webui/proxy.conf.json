@@ -1,0 +1,17 @@
+{
+  "/flock.": {
+    "target": "https://127.0.0.1:8443",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/metrics": {
+    "target": "https://127.0.0.1:8443",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/auth": {
+    "target": "https://127.0.0.1:8443",
+    "secure": false,
+    "changeOrigin": true
+  }
+}

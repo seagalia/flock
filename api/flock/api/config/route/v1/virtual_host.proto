@@ -1,0 +1,219 @@
+syntax = "proto3";
+
+package flock.api.config.route.v1;
+
+import "buf/validate/validate.proto";
+import "flock/api/config/core/v1/tls.proto";
+import "google/protobuf/any.proto";
+import "google/protobuf/wrappers.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/api/config/route/v1;route";
+
+// The top level element in the routing configuration of an http virtual server is a virtual host. Each virtual host
+// has a set of domains that get routed to it based on the incoming request's host header. This allows a single port
+// to serve several domains. Once a virtual host is selected based on the domain, its routes are tried in order to
+// choose the backend to route to, or a redirect or a direct response.
+message VirtualHost {
+  // A list of domains (host/authority header) that will be matched to this
+  // virtual host. Wildcard hosts are supported in the suffix or prefix form.
+  //
+  // Domain search order:
+  //  1. Exact domain names: ``www.foo.com``.
+  //  2. Suffix domain wildcards: ``*.foo.com`` or ``*-bar.foo.com``.
+  //  3. Prefix domain wildcards: ``foo.*`` or ``foo-*``.
+  //  4. Special wildcard ``*`` matching any domain.
+  //
+  // The wildcard will not match the empty string, e.g. ``*-bar.foo.com`` will match ``baz-bar.foo.com`` but not
+  // ``-bar.foo.com``. The longest wildcards match first.
+  // A domain can be in one virtual host of the virtual server only, the controller refuses a virtual server
+  // where two virtual hosts share a domain. So only one virtual host can match on ``*``.
+  //
+  // Domains cannot contain control characters. This is validated by the well_known_regex HTTP_HEADER_VALUE.
+  // Default to ["*"] if not set.
+  repeated string domains = 1 [(buf.validate.field).repeated = {
+    max_items: 100
+    min_items: 1
+    items: {
+      string: {
+        max_len: 253
+        well_known_regex: KNOWN_REGEX_HTTP_HEADER_VALUE
+        strict: false
+      }
+    }
+  }];
+
+  // TLS termination of the virtual host, one entry per set of certificates. Each entry gets the connections whose
+  // SNI is in its server_names. An entry with no server_names gets the connections no other entry matches.
+  // When at least one virtual host of the virtual server has TLS options, the port only accepts TLS. A request
+  // decrypted by any entry is then routed on its host header among all the virtual hosts of the virtual server.
+  repeated flock.api.config.core.v1.TLS tls_options = 2 [(buf.validate.field).repeated.max_items = 16];
+
+  // A prefix that will be prepended to the prefix and path routes of the virtual host, not to the regex ones.
+  // A prefix route on "/" matches the prefix on whole path segments: with "/api", it matches "/api" and
+  // "/api/users" but not "/apiv2".
+  string PathPrefix = 3 [(buf.validate.field).string.max_len = 2048];
+
+  // A list of routes that will be matched, in order, for incoming requests. The first route that matches handles
+  // the request.
+  repeated Route routes = 4 [
+    (buf.validate.field).repeated.max_items = 256,
+    (buf.validate.field).cel = {
+      id: "unique_names"
+      message: "names must be unique"
+      expression: "this.map(r, r.name).unique()"
+    }
+  ];
+
+  // Free key/value pairs attached to the virtual host.
+  map<string, string> metadata = 5 [(buf.validate.field).map = {
+    max_pairs: 64
+    keys: {
+      string: {max_len: 253}
+    }
+    values: {
+      string: {max_len: 4096}
+    }
+  }];
+
+  // Name of the external auth policy checking the routes of the virtual host by default, empty for none. A route can
+  // pick another policy or turn the check off. The controller refuses a name the external_auths of the HTTP routes
+  // config don't define.
+  string external_auth = 6 [(buf.validate.field).string.max_len = 63];
+}
+
+// A route matches requests, then sends them to a backend or answers them with a redirect or a direct response.
+message Route {
+  // Name of the route, unique in its virtual host.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 253
+  }];
+
+  // Route matching parameters.
+  RouteMatch match = 2 [(buf.validate.field) = {required: true}];
+
+  // What to do with a request matching the route.
+  oneof action {
+    option (buf.validate.oneof).required = true;
+    // Return a redirect.
+    RedirectAction redirect = 3;
+
+    // Return an arbitrary HTTP response directly, without proxying.
+    DirectResponseAction direct_response = 4;
+
+    // UUID of the backend to send the request to. The controller refuses a backend that doesn't exist.
+    string backend_uuid = 5;
+  }
+
+  // Extension point for custom options dedicated to a load balancer implementation.
+  // valid extensions are:
+  // - flock.extensions.route.starling_route.v1.VirtualHostRouteOptions
+  google.protobuf.Any typed_options = 6;
+
+  // External auth policy of the route. Unset inherits the default policy of the virtual host.
+  oneof external_auth {
+    // Name of the policy checking this route, in place of the default one of the virtual host. The controller refuses
+    // a name the external_auths of the HTTP routes config don't define.
+    string external_auth_name = 7 [(buf.validate.field).string.max_len = 63];
+
+    // Set to true to skip the check on this route, whatever the default policy of the virtual host.
+    bool external_auth_disabled = 8;
+  }
+}
+
+// RouteMatch tells which requests a route gets, by their path.
+message RouteMatch {
+  // How the path of the request is matched.
+  oneof path_specifier {
+    option (buf.validate.oneof).required = true;
+
+    // If specified, the route is a prefix rule meaning that the prefix must
+    // match the beginning of the ``:path`` header.
+    string prefix = 1 [(buf.validate.field).string.max_len = 2048];
+
+    // If specified, the route is an exact path rule meaning that the path must
+    // exactly match the ``:path`` header once the query string is removed.
+    string path = 2 [(buf.validate.field).string.max_len = 2048];
+
+    // If specified, the route is a regular expression rule meaning that the
+    // regex must match the ``:path`` header once the query string is removed. The entire path
+    // (without the query string) must match the regex. The rule will not match if only a
+    // subsequence of the ``:path`` header matches the regex.
+    string safe_regex = 3 [(buf.validate.field).string = {
+      max_len: 1024
+      min_len: 1
+    }];
+  }
+
+  // Indicates that prefix/path matching should be case sensitive. The default
+  // is true. Ignored for safe_regex matching.
+  google.protobuf.BoolValue case_sensitive = 5;
+}
+
+// RedirectAction answers the request with a redirect to a URL built from the request URL, with the parts set here
+// swapped. The parts left empty or zero keep their value from the request.
+message RedirectAction {
+  // When the scheme redirection take place, the following rules apply:
+  //  1. If the source URI scheme is ``http`` and the port is explicitly
+  //     set to ``:80``, the port will be removed after the redirection
+  //  2. If the source URI scheme is ``https`` and the port is explicitly
+  //     set to ``:443``, the port will be removed after the redirection
+  oneof scheme_rewrite_specifier {
+    // The scheme portion of the URL will be swapped with "https".
+    bool https_redirect = 4;
+
+    // The scheme portion of the URL will be swapped with this value.
+    string scheme_redirect = 7 [(buf.validate.field).string.max_len = 16];
+  }
+
+  // The host portion of the URL will be swapped with this value.
+  string host_redirect = 1 [
+    (buf.validate.field).string = {
+      max_len: 253
+      well_known_regex: KNOWN_REGEX_HTTP_HEADER_VALUE
+      strict: false
+    },
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE
+  ];
+
+  // The port value of the URL will be swapped with this value.
+  uint32 port_redirect = 8;
+
+  // The path portion of the URL will be swapped with this value.
+  // Please note that query string in path_redirect will override the
+  // request's query string and will not be stripped.
+  //
+  // For example, let's say we have the following routes:
+  //
+  // - match: { path: "/old-path-1" }
+  //   redirect: { path_redirect: "/new-path-1" }
+  //
+  // 1. if request uri is "/old-path-1?bar=1", users will be redirected to "/new-path-1?bar=1"
+  string path_redirect = 2 [
+    (buf.validate.field).string = {
+      max_len: 2048
+      well_known_regex: KNOWN_REGEX_HTTP_HEADER_VALUE
+      strict: false
+    },
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE
+  ];
+}
+
+// DirectResponseAction answers the request itself, without sending it to a backend.
+message DirectResponseAction {
+  // Specifies the HTTP response status to be returned.
+  uint32 status = 1 [(buf.validate.field).uint32 = {
+    lt: 600
+    gte: 200
+  }];
+
+  // Specifies the content of the response body. An empty value gives a response without body.
+  oneof specifier {
+    option (buf.validate.oneof).required = true;
+    // Bytes inlined in the configuration.
+    bytes inline_bytes = 2 [(buf.validate.field).bytes.max_len = 4096];
+
+    // String inlined in the configuration.
+    string inline_string = 3 [(buf.validate.field).string.max_len = 4096];
+  }
+}

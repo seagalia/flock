@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package flock.api.config.limit.v1;
+
+import "google/protobuf/any.proto";
+import "buf/validate/validate.proto";
+import "flock/type/v1/timeunit.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/api/config/limit/v1;limit";
+
+
+
+// Config is one limit of a virtual server.
+message Config {
+  // Kind of limit.
+  oneof action {
+    option (buf.validate.oneof).required = true;
+
+    // Limit on the number of open connections.
+    ConnectionLimit connection_limit = 1;
+    // Limit on the rate of new connections.
+    ConnectionRateLimit connection_rate_limit = 2;
+    // Extension point for limits dedicated to a load balancer implementation.
+    // valid extensions are:
+    // - flock.extensions.limit.starling_limit.v1.StarlingRateLimit
+    google.protobuf.Any typed_limit = 3;
+  }
+}
+
+// ConnectionLimit caps the number of open connections of a virtual server on a VIP. A new connection over the
+// limit is dropped.
+// Without source_address nor destination_address, all the connections share one count. With source_address, each
+// client address has its own count. With destination_address, each destination address has its own count. With
+// both, each address gets its own count on either side, and a connection is dropped when one of them is over.
+// On a wildcard VIP (ip 0.0.0.0 or ::), the starling agent applies the limit on each address of the machine, each
+// with its own count.
+message ConnectionLimit {
+  // Maximum number of connections allowed.
+  uint64 max_connections = 1 [(buf.validate.field).uint64 = {gt: 0}];
+  // Count the connections per source address.
+  bool source_address = 2;
+  // Count the connections per destination address.
+  bool destination_address = 3;
+}
+
+
+// ConnectionRateLimit caps the rate of a virtual server on a VIP with a token bucket. It counts new connections on
+// TCP and every packet on UDP, and drops what is over the limit.
+// Without source_address nor destination_address, all the traffic shares one bucket. With source_address or
+// destination_address, each address has its own bucket. With both, each source and destination pair has its own
+// bucket.
+// On a wildcard VIP (ip 0.0.0.0 or ::), the starling agent applies the limit on each address of the machine, each
+// with its own buckets.
+message ConnectionRateLimit {
+  // Maximum average rate, in connections (packets on UDP) per unit.
+  uint64 rate = 1 [(buf.validate.field).uint64 = {gt: 0}];
+  // Size of the bucket, the number of connections (packets on UDP) let through at once above the rate. The bucket
+  // refills at the rate.
+  uint64 burst = 2 [(buf.validate.field).uint64 = {gt: 0}];
+  // Time unit of rate. UNKNOWN means SECOND.
+  flock.type.v1.TimeUnit unit = 3;
+  // Use one bucket per source address.
+  bool source_address = 4;
+  // Use one bucket per destination address.
+  bool destination_address = 5;
+}

@@ -1,0 +1,142 @@
+<flock-side-panel
+  [title]="title()"
+  [subject]="current()?.name ?? ''"
+  [canClose]="canClose"
+  (closed)="closed.emit()"
+>
+  <span panelHeader class="header">
+    @if (locked()) {
+      <span class="lock" [matTooltip]="lockReason">
+        <mat-icon>lock</mat-icon>
+        Locked
+      </span>
+    }
+    @if (!creating()) {
+      @if (hasPermissions()) {
+        <button
+          mat-stroked-button
+          type="button"
+          class="permissions"
+          (click)="permissionsOpen.set(true)"
+        >
+          <mat-icon>key</mat-icon>
+          Permissions
+        </button>
+      }
+    }
+  </span>
+
+  @if (current(); as shown) {
+    @for (card of cardDefs(); track card.title) {
+      <flock-edit-card
+        [def]="card"
+        [schema]="schema()"
+        [value]="shown"
+        [readonly]="readonlyFields()"
+        [itemGreyed]="itemGreyed()"
+        [greyed]="editGreyed()"
+        [allowEdit]="allowEdit"
+        [loadAgentKinds]="loadAgentKinds"
+        [save]="saveCard"
+        (dirty)="markDirty(card, $event)"
+      />
+    }
+    @if (usedByList().length > 0) {
+      <section class="used-by">
+        <h3>Used by</h3>
+        <ul>
+          @for (user of usedByList(); track user.resource.UUID) {
+            <li>
+              {{ kindLabel(user.kind) }}
+              <button type="button" class="user" (click)="showUser(user)">
+                {{ user.resource.name }}
+              </button>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+  } @else {
+    @if (createWays().length > 0) {
+      <mat-button-toggle-group
+        class="ways"
+        aria-label="Way to create"
+        [value]="wayIndex()"
+        (change)="wayIndex.set($event.value)"
+      >
+        @for (way of createWays(); track way.label) {
+          <mat-button-toggle
+            [value]="$index"
+            [disabled]="!!way.greyed"
+            disabledInteractive
+            [matTooltip]="way.greyed"
+            >{{ way.label }}</mat-button-toggle
+          >
+        }
+      </mat-button-toggle-group>
+    }
+    @if (request(); as shownRequest) {
+      <flock-edit-card
+        [def]="requestCard()!"
+        [schema]="shownRequest.schema"
+        [(value)]="requestDraft"
+        [creating]="true"
+        [errors]="createErrors()"
+      />
+    } @else {
+      @for (card of cardDefs(); track card.title) {
+        <flock-edit-card
+          [def]="card"
+          [schema]="schema()"
+          [(value)]="draft"
+          [creating]="true"
+          [readonly]="readonlyFields()"
+          [itemGreyed]="itemGreyed()"
+          [errors]="createErrors()"
+        />
+      }
+    }
+    @if (createProblem()) {
+      <p class="problem" role="alert">{{ createProblem() }}</p>
+    }
+  }
+
+  @if (creating()) {
+    <div panelActions class="create">
+      <button
+        mat-flat-button
+        type="button"
+        class="create-button"
+        [disabled]="!!createGreyed() || busy()"
+        disabledInteractive
+        [matTooltip]="createGreyed()"
+        (click)="createResource()"
+      >
+        <mat-icon>add</mat-icon>
+        Create
+      </button>
+      @if (!request() && canDownloadFile()) {
+        <button
+          mat-stroked-button
+          type="button"
+          class="download-button"
+          [disabled]="busy()"
+          matTooltip="Save it as a YAML file for the cli instead of creating it"
+          (click)="downloadYaml()"
+        >
+          <mat-icon>download</mat-icon>
+          Download YAML
+        </button>
+      }
+    </div>
+  }
+</flock-side-panel>
+
+@if (permissionsOpen() && current(); as shown) {
+  <flock-permissions-panel
+    [resource]="shown"
+    [cache]="cache"
+    (closed)="permissionsOpen.set(false)"
+    (changed)="changed.emit()"
+  />
+}

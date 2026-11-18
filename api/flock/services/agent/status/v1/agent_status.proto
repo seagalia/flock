@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package flock.services.agent.status.v1;
+
+import "flock/api/config/agent/v1/status.proto";
+
+
+option go_package = "github.com/seagalia/flock/sdk/flock/services/agent/status/v1;agentstatus";
+
+// GetAgentStatusRequest is the request message for the GetAgentStatus method.
+message GetAgentStatusRequest {
+  // Fill the announcing vips of the status with the VIPs the agent announces.
+  bool show_announcing_vips = 1;
+}
+
+// AgentStatus is the agent service giving the status of the agent, the controller calls it for
+// Lookup.ListAgentStatus.
+service AgentStatus {
+  // GetAgentStatus returns the state of the agent and of its components.
+  rpc GetAgentStatus (GetAgentStatusRequest) returns (api.config.agent.v1.AgentStatus){
+  }
+}

@@ -1,0 +1,29 @@
+UUID: c1bc6c2e-d664-4833-8930-d8c006a0749f
+enable_l3_log: false
+http_routes_config:
+  virtual_hosts:
+  - domains:
+    - app.example.com
+    PathPrefix: /app
+    routes:
+    - name: old-path
+      match:
+        prefix: /old
+      redirect:
+        path_redirect: /app/new
+    - name: default
+      match:
+        prefix: /
+      backend_uuid: 3ba3f9fa-b2c8-4faa-865e-dd2419913869
+  - domains:
+    - '*'
+    routes:
+    - name: default
+      match:
+        prefix: /
+      backend_uuid: d08a6358-2e6c-4083-b634-3efe465185c6
+  typed_options: null
+limit_config: []
+metadata: {}
+name: test-ahalet
+port: 8080

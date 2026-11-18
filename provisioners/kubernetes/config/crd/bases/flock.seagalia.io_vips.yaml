@@ -1,0 +1,211 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.22.0
+  name: vips.flock.seagalia.io
+spec:
+  group: flock.seagalia.io
+  names:
+    kind: VIP
+    listKind: VIPList
+    plural: vips
+    singular: vip
+  scope: Cluster
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: VIP is the flock VIP of the same name, its spec converted by
+          ToProto.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: spec defines the desired state of VIP
+            properties:
+              ip:
+                description: |-
+                  IP is the IPv4 or IPv6 address of the VIP.
+                  An unspecified ip (0.0.0.0 or ::) stands for every address of that family on the machine of the agent, which
+                  serves it on each of them, and is never announced.
+                maxLength: 45
+                type: string
+                x-kubernetes-validations:
+                - message: must be an IP address
+                  rule: isIP(self)
+              prefixLength:
+                description: |-
+                  PrefixLength is the prefix length of the VIP, the agent configures and announces the VIP as ip/prefix_length.
+                  Default to 32 for IPv4 and 128 for IPv6. The agent treats a value out of range as the default.
+                format: int32
+                type: integer
+              typedAnnounce:
+                description: |-
+                  TypedAnnounce is an extension point for load balancer announcement if needed.
+                  valid extensions are:
+                  - flock.extensions.announces.starling_announce.v1.StarlingAnnounce
+                properties:
+                  starling:
+                    description: |-
+                      StarlingAnnounce tells the starling agent how to announce a VIP, packed in the `typed_announce` field of
+                      `flock.api.config.vip.v1.VIP`. When `typed_announce` is unset, `type_announce` takes its zero value, so the VIP is
+                      announced with BGP.
+
+                      Every agent adds the VIP to its `flock0` interface whatever the type. An agent announces the VIP only with the
+                      methods enabled in its configuration (`advertisement.l2` or `advertisement.bgp`), so an agent without BGP configured
+                      does not announce a VIP of the BGP type at all.
+                    properties:
+                      bgp:
+                        description: Bgp holds BGP settings for this VIP.
+                        properties:
+                          as:
+                            description: As is the ASN of the BGP speaker announcing
+                              the VIP, greater than 0.
+                            exclusiveMinimum: true
+                            format: int64
+                            maximum: 9007199254740991
+                            minimum: 0
+                            type: integer
+                        required:
+                        - as
+                        type: object
+                      typeAnnounce:
+                        description: |-
+                          TypeAnnounce is the announce method, BGP by default. With dynamic placement enabled for that method in the agent
+                          configuration (`use_dynamic_placement`), only the agent elected for the VIP announces it.
+                        enum:
+                        - BGP
+                        - Layer2
+                        - Static
+                        type: string
+                    type: object
+                type: object
+              virtualServerRefs:
+                description: |-
+                  VirtualServersUUID is the list of UUID of the virtual servers associated to the VIP.
+                  A tcp port and a udp port hold one virtual server each, except https and tls virtual servers which may share a
+                  tcp port when no server name is in two of them, at most one has no server names, and they agree on
+                  accept_proxy_protocol, connection limit and connection rate limit. An agent may ask them to agree on its own
+                  typed options too, and reports the virtual servers that don't in its status. l3 log enabled on one of them logs
+                  the whole port.
+                items:
+                  description: |-
+                    ObjectRef points at another object by name, its kind given by the field holding it. Every kind is cluster-scoped
+                    but Secret, read in the namespace of the provisioner.
+                  properties:
+                    name:
+                      description: name of the object.
+                      maxLength: 253
+                      minLength: 1
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                      type: string
+                  required:
+                  - name
+                  type: object
+                maxItems: 1000
+                type: array
+                x-kubernetes-list-type: atomic
+            required:
+            - ip
+            type: object
+          status:
+            description: status defines the observed state of VIP
+            properties:
+              conditions:
+                description: conditions tell whether flock holds the spec of the object
+                  (Ready) and why not when it doesn't.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                maxItems: 8
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              observedGeneration:
+                description: observedGeneration is the generation of the spec last
+                  written to flock.
+                format: int64
+                minimum: 0
+                type: integer
+              uuid:
+                description: uuid of the flock resource made from this object, empty
+                  until it is created.
+                maxLength: 36
+                type: string
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

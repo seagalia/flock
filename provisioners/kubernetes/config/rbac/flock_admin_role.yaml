@@ -1,0 +1,16 @@
+# Bind it with a ClusterRoleBinding: a RoleBinding grants nothing on these cluster-scoped kinds.
+#
+# Grants every verb on every flock kind, through the per-kind admin roles labelled aggregate-to-admin.
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: kubernetes
+    app.kubernetes.io/managed-by: kustomize
+  name: flock-admin
+aggregationRule:
+  clusterRoleSelectors:
+  - matchLabels:
+      flock.seagalia.io/aggregate-to-admin: "true"
+rules: []

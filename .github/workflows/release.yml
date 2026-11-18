@@ -1,0 +1,96 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      # goreleaser generates the code from the protos, then builds the dashboard, before the binaries
+      - uses: bufbuild/buf-action@v1
+        with:
+          version: 1.74.0
+          setup_only: true
+          # optional, unauthenticated calls to buf.build are rate limited
+          token: ${{ secrets.BUF_TOKEN }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: webui/.nvmrc
+          cache: npm
+          cache-dependency-path: webui/package-lock.json
+      - uses: goreleaser/goreleaser-action@v7
+        with:
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  images:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        image:
+          - name: flock
+            dockerfile: flock.Dockerfile
+            target: ""
+            suffix: ""
+          - name: flock
+            dockerfile: flock.Dockerfile
+            target: slim
+            suffix: -slim
+          - name: starling-waf
+            dockerfile: starling-waf.Dockerfile
+            target: ""
+            suffix: ""
+    steps:
+      - uses: actions/checkout@v7
+      # the arm64 images are built emulated
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # latest (and latest-slim) only follows the releases, a prerelease tag (v1.2.0-rc.1) gets its version alone
+      - id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/${{ matrix.image.name }}
+          flavor: suffix=${{ matrix.image.suffix }},onlatest=true
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+      # the flavor suffix is part of meta's version output, the binary needs the plain semver
+      - id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ${{ matrix.image.dockerfile }}
+          target: ${{ matrix.image.target }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ steps.version.outputs.version }}
+            COMMIT=${{ github.sha }}
+            DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+          cache-from: type=gha,scope=${{ matrix.image.name }}${{ matrix.image.suffix }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image.name }}${{ matrix.image.suffix }}

@@ -1,0 +1,114 @@
+syntax = "proto3";
+
+package flock.services.instantiator.v1;
+
+import "buf/validate/validate.proto";
+import "flock/api/config/agent/v1/agent.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/services/instantiator/v1;instantiator";
+
+// ListAgentRequest is the request for ListAgent.
+message ListAgentRequest {
+  // The uuid of the instance.
+  string instance_uuid = 1 [(buf.validate.field).string.min_len = 1];
+}
+
+// ListAgentResponse is the response for ListAgent.
+message ListAgentResponse {
+  // The agents of the instance.
+  repeated flock.api.config.agent.v1.Agent agents = 1;
+}
+
+// CreateServiceInstanceRequest is the request for CreateServiceInstance.
+message CreateServiceInstanceRequest {
+  // The uuid of the instance.
+  string instance_uuid = 1 [(buf.validate.field).string.min_len = 1];
+  // The originating identity, who asks for the instance (e.g.: "k8s", "cloudfoundry", ...).
+  string originating_identity = 2 [(buf.validate.field).string.min_len = 1];
+  // The name of the zone where the machines are deployed.
+  string zone = 3 [(buf.validate.field).string.min_len = 1];
+  // CPU to allocate per machine, in MHz.
+  int32 cpu = 4 [(buf.validate.field).int32.gt = 500];
+  // Memory to allocate per machine, in MB.
+  int64 memory = 5 [(buf.validate.field).int64.gt = 128];
+  // Disk to allocate per machine, in MB.
+  int32 disk = 6 [(buf.validate.field).int32.gt = 0];
+  // The number of machines to allocate.
+  int32 number = 7 [(buf.validate.field).int32.gte = 1];
+}
+
+// UpdateServiceInstanceRequest is the request for UpdateServiceInstance.
+message UpdateServiceInstanceRequest {
+  // The uuid of the instance.
+  string instance_uuid = 1 [(buf.validate.field).string.min_len = 1];
+  // The originating identity, who asks for the instance (e.g.: "k8s", "cloudfoundry", ...).
+  string originating_identity = 2 [(buf.validate.field).string.min_len = 1];
+  // The name of the zone where the machines are deployed.
+  string zone = 3 [(buf.validate.field).string.min_len = 1];
+  // CPU to allocate per machine, in MHz.
+  int32 cpu = 4 [(buf.validate.field).int32.gt = 500];
+  // Memory to allocate per machine, in MB.
+  int64 memory = 5 [(buf.validate.field).int64.gt = 128];
+  // Disk to allocate per machine, in MB.
+  int32 disk = 6 [(buf.validate.field).int32.gt = 0];
+  // The number of machines to allocate.
+  int32 number = 7 [(buf.validate.field).int32.gte = 1];
+}
+
+// DeleteServiceInstanceRequest is the request for DeleteServiceInstance.
+message DeleteServiceInstanceRequest {
+  // The uuid of the instance.
+  string instance_uuid = 1 [(buf.validate.field).string.min_len = 1];
+}
+
+// TaskResponse is the response for CreateServiceInstance, UpdateServiceInstance and DeleteServiceInstance.
+message TaskResponse {
+  // The uuid of the task.
+  string task_uuid = 1 [(buf.validate.field).string.min_len = 1];
+}
+
+// GetTaskRequest is the request for GetTask.
+message GetTaskRequest {
+  // The uuid of the task.
+  string task_uuid = 1 [(buf.validate.field).string.min_len = 1];
+}
+
+// GetTaskResponse is the response for GetTask.
+message GetTaskResponse {
+  // The uuid of the task.
+  string task_uuid = 1 [(buf.validate.field).string.min_len = 1];
+  // Status of a task.
+  enum Status {
+    UNKNOWN = 0;
+    PENDING = 1;
+    RUNNING = 2;
+    SUCCESS = 3;
+    FAILED = 4;
+  }
+  // The description of the task.
+  string description = 2;
+  // The status of the task.
+  Status status = 3;
+  // The error message of the task, when its status is FAILED.
+  string error = 4;
+}
+
+// Instantiator is the service to instantiate a service instance. The methods changing an instance answer a task,
+// whose progress is read with GetTask.
+service Instantiator {
+  // ListAgent returns the agents of an instance.
+  rpc ListAgent(ListAgentRequest) returns (ListAgentResponse) {
+  }
+  // CreateServiceInstance creates a service instance.
+  rpc CreateServiceInstance(CreateServiceInstanceRequest) returns (TaskResponse) {
+  }
+  // UpdateServiceInstance updates a service instance.
+  rpc UpdateServiceInstance(UpdateServiceInstanceRequest) returns (TaskResponse) {
+  }
+  // DeleteServiceInstance deletes a service instance.
+  rpc DeleteServiceInstance(DeleteServiceInstanceRequest) returns (TaskResponse) {
+  }
+  // GetTask returns the status of a task given by a method changing an instance.
+  rpc GetTask(GetTaskRequest) returns (GetTaskResponse) {
+  }
+}

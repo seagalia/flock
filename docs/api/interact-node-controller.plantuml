@@ -1,0 +1,15 @@
+@startuml
+loop until exit
+  "agent starling"->"LB controller": What is your latest revision for me?
+  "LB controller"->"agent starling": Here is the latest revision
+  alt revision is the same as the node's one
+    "agent starling"->"agent starling": Goes back to the start of the loop
+  else
+    "agent starling"->"LB controller": Give me the diff between my revision and the new one
+    "agent starling"->"IPVS": Deletes/adds/updates the vips
+    "agent starling"->"agent starling": Updates its healthchecks
+    Envoy->"agent starling": fetches the info of the new version and updates itself
+    "agent starling"->"agent starling": Goes back to the start of the loop
+  end
+end
+@enduml

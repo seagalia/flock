@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package flock.extensions.announces.starling_announce.v1;
+
+import "buf/validate/validate.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/extensions/announces/starling_announce/v1;starling_announce";
+
+// StarlingAnnounce tells the starling agent how to announce a VIP, packed in the `typed_announce` field of
+// `flock.api.config.vip.v1.VIP`. When `typed_announce` is unset, `type_announce` takes its zero value, so the VIP is
+// announced with BGP.
+//
+// Every agent adds the VIP to its `flock0` interface whatever the type. An agent announces the VIP only with the
+// methods enabled in its configuration (`advertisement.l2` or `advertisement.bgp`), so an agent without BGP configured
+// does not announce a VIP of the BGP type at all.
+message StarlingAnnounce {
+  // TypeAnnounce is the method announcing the VIP to the network.
+  enum TypeAnnounce {
+    // BGP advertises the VIP to the peers of the agent's BGP server (`advertisement.bgp` of the agent configuration,
+    // with BFD per peer when configured there).
+    BGP = 0;
+    // LAYER2 answers ARP (IPv4) or NDP (IPv6) requests for the VIP on the interfaces set in the agent configuration.
+    LAYER2 = 1;
+    // STATIC announces nothing. The VIP is still added to the `flock0` interface and served, and the network has to
+    // route it to the agent by other means.
+    STATIC = 2;
+  }
+  // TypeAnnounce is the announce method, BGP by default. With dynamic placement enabled for that method in the agent
+  // configuration (`use_dynamic_placement`), only the agent elected for the VIP announces it.
+  TypeAnnounce type_announce = 1;
+  // NetworkConfig holds settings specific to the announce method.
+  oneof network_config {
+    // Bgp holds BGP settings for this VIP.
+    BGP bgp = 2;
+  }
+}
+
+// BGP holds BGP settings for a VIP. The starling agent does not read it yet, the ASN and the peers come from the
+// `advertisement.bgp` section of the agent configuration.
+message BGP {
+  // As is the ASN of the BGP speaker announcing the VIP, greater than 0.
+  uint64 as = 1 [(buf.validate.field).uint64 = {gt: 0}];
+}

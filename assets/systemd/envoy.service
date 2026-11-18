@@ -1,0 +1,40 @@
+### BEGIN INIT INFO
+# Provides:          envoy
+# Required-Start:    $local_fs $remote_fs
+# Required-Stop:     $local_fs $remote_fs
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: envoy load balancer
+# Description:       distributed, highly available, load balancing proxy
+### END INIT INFO
+
+[Unit]
+Description=envoy
+Documentation=https://www.envoyproxy.io/docs.html
+After=network-online.target
+Wants=network-online.target
+StartLimitBurst=3
+StartLimitIntervalSec=10
+
+[Service]
+User=envoy
+Group=envoy
+ExecStart=bash -c 'envoy -c /etc/envoy/envoy.yaml -l ${LOG_LEVEL} --log-format '"'"'{"time": "%%Y-%%m-%%d %%T.%%e", "thread_id": "%%t", "log_level": "%%l", "logger_name": "%%n", "file": "%%g:%%#", "message": "%%j"}'"'"' | tee'
+ExecReload=/bin/kill -HUP $MAINPID
+ExecStop=/bin/kill -TERM $MAINPID
+Environment="LOG_LEVEL=info"
+Restart=always
+RestartSec=30
+LimitNOFILE=100000
+LimitNPROC=infinity
+Restart=on-failure
+RestartSec=2
+TasksMax=infinity
+OOMScoreAdjust=-1000
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+StandardOutput=append:/var/log/envoy/envoy.stdout.log
+StandardError=append:/var/log/envoy/envoy.stderr.log
+AmbientCapabilities=CAP_NET_ADMIN
+
+[Install]
+WantedBy=multi-user.target

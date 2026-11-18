@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package flock.extensions.route.starling_route.v1;
+
+import "buf/validate/validate.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/extensions/route/starling_route/v1;starling_route";
+
+
+// RouteRateLimit builds one rate limit descriptor of a request from its actions. Envoy limits the request with the
+// descriptor of the `flock.extensions.limit.starling_limit.v1.StarlingRateLimit` of the virtual server holding the
+// same entries, from its root down to a descriptor with a policy. A descriptor that matches none of them doesn't limit
+// the request.
+message RouteRateLimit {
+  // Action appends one entry to the descriptor of the request.
+  message Action {
+    // RequestHeaders appends the entry `(<descriptor_key>, <value of the header header_name>)`. When the request
+    // doesn't carry the header, no descriptor is built for the whole rate limit.
+    message RequestHeaders {
+      // HeaderName is the request header whose value becomes the value of the entry.
+      string header_name = 1
+      [(buf.validate.field).string = {max_len: 256 min_len: 1 well_known_regex: KNOWN_REGEX_HTTP_HEADER_NAME strict: false}];
+
+      // DescriptorKey is the key of the entry, the `key` of the matching descriptor of the `StarlingRateLimit`.
+      string descriptor_key = 2 [(buf.validate.field).string = {max_len: 253 min_len: 1}];
+
+    }
+
+    // RemoteAddress appends the entry `("remote_address", <client address>)`. The client address is the source address
+    // of the connection, or the one of the PROXY protocol header when the virtual server accepts it. The
+    // `x-forwarded-for` header is not trusted.
+    message RemoteAddress {
+    }
+
+
+    // GenericKey appends the entry `(<descriptor_key>, <descriptor_value>)` with a fixed value, to limit every request
+    // of the route together.
+    message GenericKey {
+      // DescriptorValue is the value of the entry.
+      string descriptor_value = 1 [(buf.validate.field).string = {max_len: 253 min_len: 1}];
+
+      // DescriptorKey is the key of the entry, `generic_key` when empty.
+      string descriptor_key = 2 [(buf.validate.field).string.max_len = 253];
+    }
+
+    // ActionSpecifier is the kind of entry to append, one is required.
+    oneof action_specifier {
+      option (buf.validate.oneof).required = true;
+
+      // RequestHeaders appends an entry with the value of a request header.
+      RequestHeaders request_headers = 1;
+
+      // RemoteAddress appends an entry with the client address.
+      RemoteAddress remote_address = 2;
+
+      // GenericKey appends an entry with a fixed key and value.
+      GenericKey generic_key = 3;
+    }
+  }
+
+  // Actions build the descriptor in order, each one appending its entry. When one of them can't append its entry, no
+  // descriptor is built and this rate limit doesn't apply to the request.
+  repeated Action actions = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 8
+  }];
+}

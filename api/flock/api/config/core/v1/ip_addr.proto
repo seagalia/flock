@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package flock.api.config.core.v1;
+
+import "buf/validate/validate.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/api/config/core/v1;core";
+
+// IPAddr represents an IP address and port.
+// Optionally a weight can be set for weighted load balancing policy.
+message IPAddr {
+  // IPv4 or IPv6 address.
+  string ip = 1 [(buf.validate.field).string = {
+    ip: true
+    max_len: 45
+  }];
+  // Port number.
+  uint32 port = 2 [(buf.validate.field).uint32 = {gt: 0, lte: 65535}];
+  // Weight of the endpoint for weighted load balancing policies. 0 (default) gives the endpoint the default weight
+  // of the agent, it never stops the traffic to the endpoint.
+  uint32 load_balancing_weight = 3;
+}
+
+// IPAddrGroup represents a group of IP addresses and ports.
+message IPAddrGroup {
+  // IP addresses and ports, at least one.
+  repeated IPAddr ip_addresses = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 1000
+  }];
+}

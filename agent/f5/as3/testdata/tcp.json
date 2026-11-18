@@ -1,0 +1,55 @@
+{
+  "action": "dry-run",
+  "class": "AS3",
+  "declaration": {
+    "class": "ADC",
+    "flock": {
+      "class": "Tenant",
+      "remark": "flock instance inst-1",
+      "vip_11111111_1111_1111_1111_111111111111": {
+        "class": "Application",
+        "mon_33333333_3333_3333_3333_333333333333": {
+          "class": "Monitor",
+          "remark": "backend-3333",
+          "monitorType": "tcp",
+          "interval": 10,
+          "timeout": 12
+        },
+        "pool_33333333_3333_3333_3333_333333333333": {
+          "class": "Pool",
+          "remark": "backend-3333",
+          "loadBalancingMode": "round-robin",
+          "monitors": [
+            {
+              "use": "mon_33333333_3333_3333_3333_333333333333"
+            }
+          ],
+          "members": [
+            {
+              "servicePort": 8080,
+              "serverAddresses": [
+                "10.0.0.10"
+              ],
+              "shareNodes": true
+            }
+          ]
+        },
+        "remark": "vip-1111",
+        "vs_22222222_2222_2222_2222_222222222222": {
+          "class": "Service_TCP",
+          "remark": "vs-2222",
+          "virtualAddresses": [
+            "10.99.0.1"
+          ],
+          "virtualPort": 443,
+          "pool": "pool_33333333_3333_3333_3333_333333333333",
+          "snat": "auto",
+          "persistenceMethods": []
+        }
+      }
+    },
+    "id": "flock-inst-1",
+    "schemaVersion": "3.50.0"
+  },
+  "persist": true
+}

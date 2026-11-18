@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package flock.type.v1;
+
+option go_package = "github.com/seagalia/flock/sdk/flock/type/v1;flocktype";
+
+// Identifies the unit of time for rate limit.
+enum TimeUnit {
+  // No unit set, treated as SECOND.
+  UNKNOWN = 0;
+  // The time unit representing a second.
+  SECOND = 1;
+
+  // The time unit representing a minute.
+  MINUTE = 2;
+
+  // The time unit representing an hour.
+  HOUR = 3;
+
+  // The time unit representing a day.
+  DAY = 4;
+}

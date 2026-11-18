@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package starling_waf.services.register.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/starling_waf/services/register/v1;svcregister";
+
+// RegisterWafConfigRequest gives the WAF a config to apply to the requests whose envoy ext_proc stream carries its
+// identifier. Registering an identifier again replaces its config.
+message RegisterWafConfigRequest {
+  // Identifier is the value of the `x-waf-uuid` metadata the ext_proc filter of the envoy listener sends with each
+  // stream. A stream without this metadata gets the default config, the OWASP CRS blocking requests.
+  string identifier = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Config is the set of rules the WAF applies to the requests of the identifier.
+  oneof config {
+    option (buf.validate.oneof).required = true;
+
+    // DetectOnly applies the default OWASP CRS in DetectionOnly mode. Matching requests are logged and never blocked.
+    // The value must be true, false registers an empty custom_rules.
+    bool detect_only = 2;
+
+    // CustomRules is a whole coraza config (SecLang directives), loaded as given with nothing of the default config. It
+    // can include the embedded files `@coraza.conf-recommended`, `@crs-setup-lts.conf.example` and
+    // `@owasp_crs_lts/*.conf`. The WAF appends its limits to it (128 arguments and 32 KiB of response body inspected),
+    // rule ids 9000001-9000099 are reserved for them. Envoy bounds the request body before it reaches the WAF. A config
+    // coraza refuses fails the call.
+    string custom_rules = 3;
+  }
+}
+
+// UnregisterWafConfigRequest removes the config of an identifier.
+message UnregisterWafConfigRequest {
+  // Identifier is the one given to RegisterWafConfig. The streams sending it afterwards fail, so envoy answers their
+  // requests with an error.
+  string identifier = 1 [(buf.validate.field).string.min_len = 1];
+}
+
+// Register is the service starling-waf serves on its unix socket, next to envoy's ExternalProcessor. The starling agent
+// calls it to give the WAF the config of each route before envoy sends the route's requests.
+service Register {
+  // RegisterWafConfig adds or replaces the config of an identifier.
+  rpc RegisterWafConfig(RegisterWafConfigRequest) returns (google.protobuf.Empty) {}
+  // UnregisterWafConfig removes the config of an identifier. An unknown identifier is not an error.
+  rpc UnregisterWafConfig(UnregisterWafConfigRequest) returns (google.protobuf.Empty) {}
+}

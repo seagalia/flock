@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package flock.type.v1;
+
+option go_package = "github.com/seagalia/flock/sdk/flock/type/v1;flocktype";
+
+// Note is something an agent wants known about how it applied a resource. The resource is applied with it.
+message Note {
+  // Level tells a fact from a problem.
+  enum Level {
+    // A fact on how the resource is served, nothing to fix.
+    INFO = 0;
+    // The agent served the resource differently from what it asks, for example an option it had to drop.
+    WARNING = 1;
+  }
+  // The level of the note.
+  Level level = 1;
+  // Code is a stable identifier clients can match on, prefixed by the agent type: `starling.datapath.ipvs` and
+  // `starling.datapath.envoy` for the engine serving a tcp or udp route of the starling agent, `f5.approximation` for
+  // what the F5 agent approximated, `f5.post` for what the last post of a tenant on the F5 device reported.
+  string code = 2;
+  // Scope is the part of the resource the note is about, for example `203.0.113.10:53/udp` for a route on a VIP,
+  // empty for the whole resource.
+  string scope = 3;
+  // Message is the note for humans.
+  string message = 4;
+}

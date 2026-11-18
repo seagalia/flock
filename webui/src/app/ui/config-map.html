@@ -1,0 +1,85 @@
+@if (instanceHealth.endpointStats() === null) {
+  <p class="state">Loading the configuration ...</p>
+} @else if (!vs()) {
+  <p class="state">This virtual server no longer exists.</p>
+} @else {
+  <div class="header">
+    <span class="recap">{{ recapLine() }}</span>
+    <span class="legend">
+      <span><span class="dot ok"></span>healthy</span>
+      <span><span class="dot warning"></span>degraded</span>
+      <span><span class="dot error"></span>down</span>
+      <span><span class="path"></span>request path</span>
+    </span>
+  </div>
+  @if (backendsFailed()) {
+    <p class="failed">The backends could not be loaded.</p>
+  }
+  @if (layoutFailed()) {
+    <p class="failed">The map could not be laid out.</p>
+  }
+  @if (layout(); as layout) {
+    <!-- a click which is not on a node, nor on its summary, is on the background; Escape is its keyboard way -->
+    <div #map class="map" role="presentation" (click)="clearOnBackground($event)">
+      <vflow view="auto" background="transparent" [nodes]="layout.nodes" [edges]="layout.edges">
+        <ng-template let-ctx nodeHtml>
+          @let node = nodeById().get(ctx.node.id);
+          @let head = headLabels.get(ctx.node.id);
+          @if (head) {
+            <span class="head" [style.width.px]="nodeWidth" [style.height.px]="headHeight">{{
+              head
+            }}</span>
+          } @else {
+            <!-- a null template draws no handle: the wires only show the links, nothing is connected by hand -->
+            <handle type="target" position="left" [template]="null" />
+            <handle type="source" position="right" [template]="null" />
+          }
+          @if (node) {
+            <button
+              type="button"
+              class="card"
+              [style.width.px]="nodeWidth"
+              [style.height.px]="nodeHeight"
+              [class]="node.health ?? ''"
+              [class.vs]="node.kind === 'vs'"
+              [class.dashed]="node.dashed"
+              [class.missing]="node.missing"
+              [class.lit]="highlight()?.nodes.has(node.id)"
+              [class.faded]="highlight() && !highlight()?.nodes.has(node.id)"
+              [class.selected]="selected() === node.id"
+              (click)="selectedId.set(node.id)"
+            >
+              @if (node.health) {
+                <span class="dot" [class]="node.health"></span>
+              }
+              <span class="text">
+                <b [class.any-host]="node.anyHost">{{ node.title }}</b>
+                <span class="subtitle">{{ node.subtitle }}</span>
+              </span>
+            </button>
+            @if (selected() === node.id) {
+              <node-toolbar position="bottom">
+                <flock-node-summary
+                  [node]="node"
+                  [actions]="node.resource ? actions()(node.resource) : []"
+                />
+              </node-toolbar>
+            }
+          }
+        </ng-template>
+        <ng-template let-ctx edge>
+          @let edge = edgeById().get(ctx.edge.id);
+          <svg:path
+            class="wire"
+            [attr.d]="ctx.path()"
+            [class.failed]="edge?.failed"
+            [class.lit]="highlight()?.edges.has(ctx.edge.id)"
+            [class.faded]="highlight() && !highlight()?.edges.has(ctx.edge.id)"
+          />
+        </ng-template>
+      </vflow>
+    </div>
+  } @else if (!backendsFailed() && !layoutFailed()) {
+    <p class="state">Loading the configuration ...</p>
+  }
+}

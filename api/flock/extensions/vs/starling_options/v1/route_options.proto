@@ -1,0 +1,118 @@
+syntax = "proto3";
+
+package flock.extensions.vs.starling_options.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/duration.proto";
+import "flock/api/config/core/v1/base.proto";
+import "flock/extensions/common/starling_options/v1/http_protocol.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/extensions/vs/starling_options/v1;starling_vsopts";
+
+// TcpUdpOptions holds the starling agent options of a tcp or udp virtual server, packed in the `typed_options` field of
+// `flock.api.config.vs.v1.TcpRouteConfig` or `flock.api.config.vs.v1.UdpRouteConfig`.
+//
+// The agent serves these virtual servers with IPVS, or with envoy when the backend uses the PROXY protocol, when the
+// virtual server accepts it, when the kernel's IPVS can't apply the load balancing policy of the backend, or in dev
+// mode.
+message TcpUdpOptions {
+  // DisableSnat keeps the client address as the source of the packets sent to the backends, so the backends see the
+  // real client IP and must route their replies back through the agent. With IPVS the agent then sets no nftables SNAT
+  // mark for the port of the virtual server. With envoy it adds envoy's `original_src` listener filter, which the agent
+  // setting `advertisement.disable_snat` also adds to every envoy listener.
+  bool disable_snat = 1;
+  // DisableDnat keeps the VIP as the destination of the packets sent to the backends. With IPVS the agent forwards them
+  // with direct routing instead of NAT (masquerade), so each backend must accept the VIP as a local address. With envoy
+  // it adds envoy's `original_dst` listener filter.
+  bool disable_dnat = 2;
+}
+
+// TlsTcpOptions holds the starling agent options of a TLS over TCP virtual server, packed in the `typed_options` field
+// of `flock.api.config.vs.v1.TlsTcpRoutesConfig`. Envoy serves these virtual servers.
+//
+// Virtual servers sharing a port of a VIP must all have the same `disable_snat` and `disable_dnat`, because they apply
+// to the whole port. A virtual server that differs is not served on the port.
+message TlsTcpOptions {
+  // DisableSnat adds envoy's `original_src` listener filter, so envoy connects to the backends with the client address
+  // as source and the backends must route their replies back through the agent. The agent setting
+  // `advertisement.disable_snat` has the same effect on every envoy listener.
+  bool disable_snat = 1;
+  // DisableDnat adds envoy's `original_dst` listener filter.
+  bool disable_dnat = 2;
+}
+
+// HttpOptions holds the starling agent options of an http virtual server, packed in the `typed_options` field of
+// `flock.api.config.vs.v1.HttpRoutesConfig`. They configure the envoy HTTP connection manager serving the virtual
+// server, so they apply to every virtual host of it.
+//
+// Virtual servers sharing a port of a VIP must all have the same `disable_snat` and `disable_dnat`, because they apply
+// to the whole port. A virtual server that differs is not served on the port.
+message HttpOptions {
+  // CodecType is the HTTP version the virtual server expects from its clients.
+  enum CodecType {
+    // AUTO detects HTTP/1.1 or HTTP/2 for each new connection.
+    AUTO = 0;
+
+    // HTTP1 assumes the client speaks HTTP/1.1.
+    HTTP1 = 1;
+
+    // HTTP2 assumes the client speaks HTTP/2.
+    HTTP2 = 2;
+  }
+  // CodecType is the HTTP version accepted from clients, AUTO by default.
+  CodecType codec_type = 1;
+
+
+  // RequestHeadersToAdd are added to each request before it is sent to a backend, at most 1000.
+  repeated flock.api.config.core.v1.HeaderValueOption request_headers_to_add = 2
+  [(buf.validate.field).repeated = {max_items: 1000}];
+
+  // RequestHeadersToRemove are the names of the headers removed from each request before it is sent to a backend.
+  repeated string request_headers_to_remove = 3 [(buf.validate.field).repeated = {
+    max_items: 64
+    items {string {max_len: 256 min_len: 1 well_known_regex: KNOWN_REGEX_HTTP_HEADER_NAME strict: false}}
+  }];
+
+  // ResponseHeadersToAdd are added to each response sent to the client, at most 1000.
+  repeated flock.api.config.core.v1.HeaderValueOption response_headers_to_add = 4
+  [(buf.validate.field).repeated = {max_items: 1000}];
+
+  // ResponseHeadersToRemove are the names of the headers removed from each response sent to the client.
+  repeated string response_headers_to_remove = 5 [(buf.validate.field).repeated = {
+    max_items: 64
+    items {string {max_len: 256 min_len: 1 well_known_regex: KNOWN_REGEX_HTTP_HEADER_NAME strict: false}}
+  }];
+
+  // CommonHttpProtocolOptions apply to the client connections, whatever their HTTP version. The idle timeout is 1 hour
+  // when unset. Requests with an underscore in a header name are always rejected.
+  common.starling_options.v1.CommonHttpProtocolOptions common_http_protocol_options = 6;
+
+  // HttpProtocolOptions apply to the HTTP/1 client connections.
+  common.starling_options.v1.Http1ProtocolOptions http_protocol_options = 7;
+
+  // Http2ProtocolOptions apply to the HTTP/2 client connections. When unset, or for the fields left unset, the agent
+  // uses at most 1000000 concurrent streams, an initial stream window of 65536 bytes and an initial connection window
+  // of 1048576 bytes.
+  common.starling_options.v1.Http2ProtocolOptions http2_protocol_options = 8;
+
+  // Http3ProtocolOptions is passed to envoy, but the listeners of the starling agent accept no HTTP/3 connection and
+  // `codec_type` has no HTTP/3 value, so it has no effect.
+  common.starling_options.v1.Http3ProtocolOptions http3_protocol_options = 9;
+
+  // StreamIdleTimeout is how long a stream may stay without activity before envoy resets it. When unset, it is 5
+  // minutes for the connection manager and 15 seconds on the routes to a backend. When set, it applies to both. 0
+  // disables it.
+  google.protobuf.Duration stream_idle_timeout = 10;
+
+  // RequestTimeout is applied twice. As the request timeout of the connection manager, it bounds the time to receive
+  // the whole request from the client. As the timeout of the routes to a backend, it bounds the time from the end of
+  // the request to the end of the response of the backend. Unset or 0 disables both.
+  google.protobuf.Duration request_timeout = 11;
+
+  // DisableSnat adds envoy's `original_src` listener filter, so envoy connects to the backends with the client address
+  // as source and the backends must route their replies back through the agent. The agent setting
+  // `advertisement.disable_snat` has the same effect on every envoy listener.
+  bool disable_snat = 14;
+  // DisableDnat adds envoy's `original_dst` listener filter.
+  bool disable_dnat = 15;
+}

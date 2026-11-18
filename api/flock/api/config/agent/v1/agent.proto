@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package flock.api.config.agent.v1;
+
+import "buf/validate/validate.proto";
+import "flock/api/config/core/v1/healthcheck.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/api/config/agent/v1;agent";
+
+
+// Agent describes an agent of an instance, as declared in the static instantiators of the controller configuration.
+// The controller uses it to call the services of the agent and to scrape its metrics.
+message Agent {
+  // UUID is the unique identifier of the agent. It is the agent_uuid used to target one agent in the lookup service.
+  string UUID = 1;
+  // Name is the name of the agent, shown in listings and statuses. It equals the CN of the certificate the agent
+  // connects with. It is a lowercase DNS label of at most 63 characters, starting and ending with a letter or a digit.
+  string name = 2 [(buf.validate.field).string = {pattern: "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"}];
+  // Host is the address the controller dials to call the services of the agent and to scrape its metrics.
+  string host = 3 [(buf.validate.field).string = {min_len: 1}];
+  // Type names the agent implementation. It is added as the agent_type label of the metrics scraped from the agent.
+  string type = 4 [(buf.validate.field).string = {min_len: 1}];
+  // Extensions is the list of extensions supported by the agent, shown by `flock agents`.
+  repeated string extensions = 5;
+  // Features tells which optional services of the agent the controller may call.
+  AgentFeatures features = 6 [(buf.validate.field) = {required: true}];
+  // Metadata is a free list of key/value pairs describing the agent.
+  map<string, string> metadata = 7;
+  // PluginHealthChecks is the list of plugin health checks supported by the agent.
+  repeated core.v1.PluginHealthCheckInfo plugin_health_checks = 8;
+  // Mode tells how the agent runs relative to the load balancer it controls.
+  enum Mode {
+    // SIDECAR mode is when the agent runs on the same host as the load balancer it controls. For logs and agent
+    // status, the controller calls every agent of the instance and each one reports its own SidecarAgentState.
+    SIDECAR = 0;
+    // BRIDGE mode is when the agent runs on a different host than the load balancer it controls. For logs and agent
+    // status, the controller calls only the first reachable agent of the instance, which reports a BridgeAgentStatus.
+    BRIDGE = 1;
+    // PROVISIONER mode is an agent that provisions resources (certificates, for example) and drives no load balancer.
+    // It is left out of the bridge detection and the health counts, and a resource status call asks it only when it
+    // names it. It answers logs and agent status like any agent.
+    PROVISIONER = 2;
+  }
+  // Mode is the mode of the agent, SIDECAR by default.
+  Mode mode = 9;
+
+  // InstanceUUID is the UUID of the instance the agent belongs to.
+  string instance_uuid = 10;
+}
+
+// AgentFeatures is the list of optional features the agent serves. The controller only calls an agent for a feature
+// it has set.
+message AgentFeatures {
+  // ShowLogs tells the agent serves its logs, read by the GetLogs calls of the lookup service.
+  bool show_logs = 1;
+  // ShowMetrics tells the controller can scrape the Prometheus metrics of the agent.
+  bool show_metrics = 2;
+  // ShowStatus tells the agent serves the status of itself and of the resources it programs, read by the status
+  // calls of the lookup service.
+  bool show_status = 3;
+  // ShowL3Log tells the agent supports enable_l3_log on virtual servers. It is informational, the controller does not
+  // check it when a virtual server sets enable_l3_log.
+  bool show_l3_log = 4;
+}

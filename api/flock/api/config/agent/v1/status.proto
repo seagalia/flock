@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package flock.api.config.agent.v1;
+
+import "buf/validate/validate.proto";
+import "flock/api/config/vip/v1/vip.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/api/config/agent/v1;agent";
+
+// Status is the health of an agent or of one of its components.
+enum Status {
+  // UNKNOWN is when the status could not be read, for example when a bridge agent is unreachable.
+  UNKNOWN = 0;
+  OK = 1;
+  ERRORED = 2;
+  WARNING = 3;
+}
+
+// AgentStatus gives the status of the agent and its components, or of the components a bridge agent controls.
+message AgentStatus {
+  // State depends on the mode of the agent.
+  oneof state {
+    // SidecarAgentState is set by an agent in SIDECAR mode.
+    SidecarAgentState sidecar_agent_state = 1;
+    // ProxyAgentState is set for an agent in BRIDGE mode.
+    BridgeAgentStatus proxy_agent_state = 2;
+  }
+}
+
+// SidecarAgentState gives the status of the agent and its components.
+// Sidecar means that the agent is running on the same host as the components.
+message SidecarAgentState {
+  // AgentState is the state of the agent itself.
+  State agent_state = 1;
+  // ComponentStates are the states of the components of the load balancer, named by the agent.
+  repeated State component_states = 2;
+  // AnnouncingVips are the VIPs this agent announces. With dynamic placement, a VIP placed on another agent is left
+  // out. Only filled when show_announcing_vips is asked in the request.
+  repeated vip.v1.VIP announcing_vips = 3;
+}
+
+// BridgeAgentStatus gives the status of the components controlled by a bridge agent.
+message BridgeAgentStatus {
+  // ComponentStates are the states of the controlled components.
+  repeated State component_states = 1;
+  // ComponentAnnouncingVips are the VIPs announced by each controlled component.
+  repeated ComponentAnnouncingVips component_announcing_vips = 2;
+}
+
+// ComponentAnnouncingVips gives the VIPs announced by one component controlled by a bridge agent.
+message ComponentAnnouncingVips {
+  // Name is the name of the component.
+  string name = 1 [(buf.validate.field).string = {min_len: 1}];
+  // AnnouncingVips are the VIPs announced by this component.
+  repeated vip.v1.VIP announcing_vips = 2;
+}
+
+
+// State gives the status of a component or of the agent.
+message State {
+  // Name is the name of the component or of the agent.
+  string name = 1 [(buf.validate.field).string = {min_len: 1}];
+  // Status is the health of the component.
+  Status status = 3;
+  // Details explains the status, for example the error when the status is ERRORED.
+  string details = 4;
+}

@@ -1,0 +1,117 @@
+syntax = "proto3";
+
+package flock.services.vip.v1;
+
+import "buf/validate/validate.proto";
+import "flock/api/config/vip/v1/vip.proto";
+import "flock/services/core/v1/filter.proto";
+import "flock/services/core/v1/requests.proto";
+import "google/protobuf/any.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/services/vip/v1;svcvip";
+
+// CreateVIPRequest is the request message for the CreateVIP method.
+message CreateVIPRequest {
+  // The VIP to create. Its UUID is ignored, the controller generates one.
+  flock.api.config.vip.v1.VIP vip = 1 [(buf.validate.field) = {required: true}];
+}
+
+// UpdateVIPRequest is the request message for the UpdateVIP method.
+message UpdateVIPRequest {
+  // The UUID of the VIP to update.
+  string UUID = 1 [(buf.validate.field).string = {min_len: 1}];
+  // The new content of the VIP, it replaces the stored one. Its UUID is ignored and set to the UUID above.
+  flock.api.config.vip.v1.VIP vip = 2 [(buf.validate.field) = {required: true}];
+}
+
+// VIPResponse is the response message for the CreateVIP, ReadVIP, UpdateVIP and RegisterVip methods.
+message VIPResponse {
+  // The VIP as stored by the controller, with its uuid and prefix_length set.
+  flock.api.config.vip.v1.VIP vip = 1 [(buf.validate.field) = {required: true}];
+}
+
+// MetadataSelector selects a resource by its metadata.
+message MetadataSelector {
+  // Metadata the resource must have, all of them.
+  map<string, string> metadata = 1 [(buf.validate.field).map.min_pairs = 1];
+}
+
+// RegisterVipRequest is the request message for the RegisterVip method.
+message RegisterVipRequest {
+  // Name of the vip to create, unique among the vips (AlreadyExists otherwise).
+  string name = 1 [(buf.validate.field).string = {min_len: 1}];
+
+  // Where the ip of the vip is acquired.
+  oneof location {
+    option (buf.validate.oneof).required = true;
+    // Instance the vip is added to. The ip is acquired in the zone of the instance, and the caller needs the writer
+    // role on the instance. When adding the vip to the instance fails, the vip stays created with its ip and the call
+    // returns the error.
+    string instance_uuid = 2 [(buf.validate.field).string = {min_len: 1}];
+    // Zone where the ip is acquired. The vip is not added to any instance, its ip stays acquired in the zone until the
+    // vip is deleted. The caller needs the reader role on the zone.
+    string zone_uuid = 3 [(buf.validate.field).string = {min_len: 1}];
+    // Metadata the zone must have, all of them. The first zone found with them is chosen, NotFound when there is none.
+    // The vip is not added to any instance, and the caller needs the reader role on the zone found.
+    MetadataSelector zone_metadata = 4;
+  }
+
+  // Pool of the zone the ip is acquired in. Without one, the default pool of the zone (its first public pool), and the
+  // call fails with FailedPrecondition when the zone has no public pool.
+  oneof pool {
+    // Name of the pool.
+    string pool_name = 5 [(buf.validate.field).string = {min_len: 1}];
+    // Metadata the pool must have, all of them. The first pool holding them, in the order of the pools of the zone, is
+    // chosen.
+    MetadataSelector pool_metadata = 6;
+  }
+
+  // TypedAnnounce is the typed_announce of the created vip, the implementation-specific way agents announce it.
+  // valid extensions are:
+  // - flock.extensions.announces.starling_announce.v1.StarlingAnnounce
+  google.protobuf.Any typed_announce = 7;
+}
+
+// ListVIPRequest is the request message for the ListVIP method.
+message ListVIPRequest {
+  // The maximum number of VIPs to return, 50 when 0.
+  int32 limit = 1 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
+  // The number of VIPs to skip before the first one returned, for paging.
+  int32 offset = 2 [(buf.validate.field).int32 = {gte: 0}];
+  // The filters the VIPs must match, see ListFilter.
+  repeated core.v1.ListFilter filters = 3;
+}
+
+// ListVIPResponse is the response message for the ListVIP method.
+message ListVIPResponse {
+  // The VIPs of the page.
+  repeated flock.api.config.vip.v1.VIP vip = 1;
+}
+
+// VIP is the service that manages VIPs.
+service VIP {
+  // CreateVIP creates a new VIP, for admins only. A prefix_length of 0 becomes 32 for an IPv4 ip and 128 for an IPv6
+  // one. The virtual servers of the VIP must exist and be able to share their ports, otherwise the call fails.
+  rpc CreateVIP(CreateVIPRequest) returns (VIPResponse) {}
+  // ReadVIP returns the VIP with the given UUID. It needs the reader role on the VIP.
+  rpc ReadVIP(flock.services.core.v1.UuidRequest) returns (VIPResponse) {}
+  // UpdateVIP replaces the VIP with the given UUID, with the same checks as CreateVIP. It needs the writer role on the
+  // VIP and the owner role when the name changes. Changing the ip or the prefix_length is for admins only, and the ip
+  // can't change while the ipam is enabled.
+  rpc UpdateVIP(UpdateVIPRequest) returns (VIPResponse) {}
+  // DeleteVIP deletes the VIP with the given UUID, for admins only. It fails with FailedPrecondition while an instance
+  // uses the VIP. With the ipam enabled, the ips the VIP holds are released.
+  rpc DeleteVIP(flock.services.core.v1.UuidRequest) returns (google.protobuf.Empty) {}
+  // ListVIP returns the VIPs the caller can read that match the filters. An admin gets every VIP, or those of the user
+  // given in the as_user header.
+  rpc ListVIP(ListVIPRequest) returns (ListVIPResponse) {}
+  // RegisterVip creates a vip whose ip is acquired from the ipam, with a prefix_length of 32 for IPv4 and 128 for
+  // IPv6, and adds it to an instance when instance_uuid is set. It fails with FailedPrecondition when the ipam is
+  // disabled or the zone has no pool. Unlike CreateVIP, it doesn't need the admin role, and a caller who is not
+  // admin becomes the owner of the vip.
+  rpc RegisterVip(RegisterVipRequest) returns (VIPResponse) {}
+}

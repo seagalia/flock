@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package flock.services.lease.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "buf/validate/validate.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/services/lease/v1;svclease";
+
+// AcquireRequest is the request message for the Acquire method.
+message AcquireRequest {
+  // type_url is the type of the resource to lease, e.g. type.googleapis.com/flock.api.config.cert.v1.Certificate.
+  string type_url = 1 [(buf.validate.field).string = {min_len: 1}];
+  // UUID is the uuid of the resource to lease. The caller needs the writer role on it.
+  string UUID = 2 [(buf.validate.field).string = {min_len: 1}];
+  // instance_uuid is the instance the caller is declared on. The common name of its client certificate must name an
+  // agent declared for it, a common name being unique within an instance only.
+  string instance_uuid = 3 [(buf.validate.field).string = {min_len: 1}];
+  // ttl is how long the lease lives without a renewal, 1 minute when unset. The controller brings it within 10s and
+  // 5m instead of refusing it.
+  google.protobuf.Duration ttl = 4;
+}
+
+// AcquireResponse is the response message for the Acquire method.
+message AcquireResponse {
+  // granted tells whether the caller holds the lease. A lease held by another agent is no error.
+  bool granted = 1;
+  // lease_id proves the grant, Renew and Release need it. Set only when granted.
+  string lease_id = 2;
+  // holder_uuid is the uuid of the agent holding the lease, the caller's when granted.
+  string holder_uuid = 3;
+  // holder_name is the name of the agent holding the lease.
+  string holder_name = 4;
+  // expires_at is when the lease ends without a renewal, on the clock of the database.
+  google.protobuf.Timestamp expires_at = 5;
+}
+
+// RenewRequest is the request message for the Renew method.
+message RenewRequest {
+  // lease_id is the id Acquire gave.
+  string lease_id = 1 [(buf.validate.field).string.uuid = true];
+  // ttl is the new life of the lease from now, with the same default and bounds as in Acquire.
+  google.protobuf.Duration ttl = 2;
+}
+
+// RenewResponse is the response message for the Renew method.
+message RenewResponse {
+  // expires_at is the new end of the lease.
+  google.protobuf.Timestamp expires_at = 1;
+}
+
+// ReleaseRequest is the request message for the Release method.
+message ReleaseRequest {
+  // lease_id is the id Acquire gave.
+  string lease_id = 1 [(buf.validate.field).string.uuid = true];
+}
+
+// Lease gives agents short leases on resources, so that only one agent of an instance works on a resource at a time.
+// The holder of a lease is the agent named by the common name of the caller's client certificate.
+service Lease {
+  // Acquire takes the lease of a resource when it is free or expired. It never waits: a lease held by another agent
+  // answers granted false with its holder and expiry. It needs the writer role on the resource.
+  rpc Acquire(AcquireRequest) returns (AcquireResponse) {}
+  // Renew pushes the end of a held lease. It answers NotFound once the lease expired or was taken over, or when the
+  // caller is not its holder: the caller must treat that as the lease lost.
+  rpc Renew(RenewRequest) returns (RenewResponse) {}
+  // Release ends a lease of the caller. It answers Empty for an unknown or expired lease too, so it can be called
+  // twice.
+  rpc Release(ReleaseRequest) returns (google.protobuf.Empty) {}
+}

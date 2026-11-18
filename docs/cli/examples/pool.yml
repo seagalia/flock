@@ -1,0 +1,10 @@
+name: ns-a
+privacy: PRIVATE
+metadata:
+  ns: a
+subnets:
+- ip: 10.86.70.0
+  prefix_length: 26
+ip_ranges:
+- ip_min: 10.86.80.10
+  ip_max: 10.86.80.50

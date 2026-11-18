@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package flock.extensions.limit.starling_limit.v1;
+
+import "buf/validate/validate.proto";
+import "flock/type/v1/timeunit.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/extensions/limit/starling_limit/v1;starling_limit";
+
+// Rate limit of the requests of an http virtual server, applied by envoy in the starling agent. It is packed in the
+// `typed_limit` of an entry of the `limit_config` of the virtual server, and only the first such entry is used.
+//
+// Each rate limit of a route (`flock.extensions.route.starling_route.v1.VirtualHostRouteOptions`) builds a descriptor
+// of the request with one entry per action, in order. It is limited by the descriptor declared here with exactly these
+// entries, from a root descriptor down to a descriptor with a policy. A request over the limit of one of its
+// descriptors is answered 429.
+//
+// Each agent counts the requests it receives, so N agents announcing the VIP let through N times the rate.
+message StarlingRateLimit {
+  // Root descriptors, at least one.
+  repeated Descriptor descriptors = 1 [(buf.validate.field).repeated = {
+    max_items: 16
+    min_items: 1
+  }];
+}
+
+// Descriptor matches one entry of the descriptor of a request, and its sub descriptors match the next entries.
+message Descriptor {
+  // Key of the entry, the key set by the matching route action (e.g. `remote_address`, or the `descriptor_key` of a
+  // request headers action).
+  string key = 1 [(buf.validate.field).string = {
+    max_len: 253
+    min_len: 1
+  }];
+
+  // Value of the entry. When empty, any value matches and each value gets its own limit, e.g. one limit per client
+  // address with the key `remote_address`. A sibling descriptor with the same key and a value replaces it for that
+  // value. The agent keeps the counters of at most 10000 such values per virtual server, and a value evicted from them
+  // starts again with a full limit.
+  string value = 2 [(buf.validate.field).string.max_len = 253];
+
+  // Limit of the requests matching the entries from the root descriptor down to this one. A descriptor without policy
+  // only groups its sub descriptors.
+  Policy policy = 3;
+
+  // Sub descriptors, matching one more entry.
+  repeated Descriptor descriptors = 4 [(buf.validate.field).repeated.max_items = 16];
+
+  // When true, the requests over the limit of the policy still reach the backend and only the rate limit stats of envoy
+  // count them.
+  bool shadow_mode = 5;
+}
+
+// Rate limit policy.
+message Policy {
+  // Unit of time for the rate limit, a second when unset.
+  type.v1.TimeUnit unit = 1 [(buf.validate.field).enum = {defined_only: true}];
+
+  // Number of requests allowed within `unit` time.
+  uint32 requests_per_unit = 2 [(buf.validate.field).uint32 = {gt: 0}];
+}

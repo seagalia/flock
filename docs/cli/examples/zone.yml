@@ -1,0 +1,13 @@
+name: poc-ines
+pools:
+- name: default
+  privacy: PUBLIC
+  subnets:
+  - ip: 10.86.50.0
+    prefix_length: 26
+  ip_ranges:
+  - ip_min: 10.86.60.10
+    ip_max: 10.86.60.50
+zone: seg-aif-0a-009
+metadata:
+  site: ND2

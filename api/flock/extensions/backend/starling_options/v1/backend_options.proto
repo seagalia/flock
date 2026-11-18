@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package flock.extensions.backend.starling_options.v1;
+
+
+option go_package = "github.com/seagalia/flock/sdk/flock/extensions/backend/starling_options/v1;starling_backendopts";
+
+
+// BackendOptions holds the starling agent options of a backend, packed in the `typed_options` field of
+// `flock.api.config.backend.v1.Backend`. It has no field yet.
+message BackendOptions {
+}

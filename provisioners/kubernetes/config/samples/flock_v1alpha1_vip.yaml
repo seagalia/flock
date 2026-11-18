@@ -1,0 +1,9 @@
+apiVersion: flock.seagalia.io/v1alpha1
+kind: VIP
+metadata:
+  labels:
+    app.kubernetes.io/name: kubernetes
+    app.kubernetes.io/managed-by: kustomize
+  name: vip-sample
+spec:
+  # TODO(user): Add fields here

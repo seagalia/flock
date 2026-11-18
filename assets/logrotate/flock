@@ -1,0 +1,10 @@
+/var/log/flock/*log {
+	daily
+	missingok
+	rotate 10
+	compress
+	delaycompress
+	notifempty
+	create
+	size 100M
+}

@@ -1,0 +1,9 @@
+## Append samples of your project ##
+resources:
+- flock_v1alpha1_backend.yaml
+- flock_v1alpha1_vip.yaml
+- flock_v1alpha1_virtualserver.yaml
+- flock_v1alpha1_zone.yaml
+- flock_v1alpha1_certificate.yaml
+- flock_v1alpha1_instance.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples

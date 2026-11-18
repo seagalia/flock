@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package flock.extensions.route.starling_route.v1;
+
+import "buf/validate/validate.proto";
+import "flock/extensions/route/starling_route/v1/ratelimit.proto";
+import "flock/extensions/route/starling_route/v1/waf.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/extensions/route/starling_route/v1;starling_route";
+
+// VirtualHostRouteOptions holds the starling agent options of a route of a virtual host, packed in the `typed_options`
+// field of `flock.api.config.route.v1.Route`. The agent refuses a route whose options can't be read.
+message VirtualHostRouteOptions {
+  // Rate limits of the route, each one builds a descriptor of the request matched against the descriptors of the
+  // `flock.extensions.limit.starling_limit.v1.StarlingRateLimit` of the virtual server. Only routes to a backend are
+  // rate limited.
+  repeated RouteRateLimit rate_limits = 1 [(buf.validate.field).repeated.max_items = 4];
+
+  // Waf turns on the WAF for the route when set, even empty. An empty one blocks the requests the OWASP Core Rule Set
+  // flags, its config picks detection only or custom rules instead. Unset, the route has no WAF.
+  Waf waf = 2;
+}

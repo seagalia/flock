@@ -1,0 +1,23 @@
+# never committed again
+/vendor/
+.crap/
+.idea/
+.DS_Store
+.superpowers/
+.claude/
+.envrc
+
+# local data and builds
+*.db
+/flock
+/dist/
+/e2e/.build/
+/bin/golangci-lint-custom
+/config*.yml
+/store/
+
+# key material
+*.crt
+*.key
+*.pem
+*.test

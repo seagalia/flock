@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package flock.api.observer.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/api/observer/v1;observer";
+
+
+// Subject is the payload of an event on the internal bus of the controller, emitted when a resource changes. The
+// announcers read it to push the change to agents, and the NATS bridge forwards it to the other controllers.
+message Subject {
+  // TypeURL is the type URL of the resource in this event, e.g. `type.googleapis.com/flock.api.config.vip.v1.VIP`.
+  string type_url = 1 [(buf.validate.field).string = {min_len: 1}];
+  // Identifier is the UUID of the resource in this event.
+  string identifier = 2 [(buf.validate.field).string = {min_len: 1}];
+  // Signature is a hash of the resource content after the change. Delete events leave it empty.
+  string signature = 3 [(buf.validate.field).string = {min_len: 1}];
+  // Metadata holds additional information about the event. The NATS bridge sets `from_nats` and `instance_uuid` in it
+  // to avoid re-publishing the events it received.
+  google.protobuf.Struct metadata = 4;
+}

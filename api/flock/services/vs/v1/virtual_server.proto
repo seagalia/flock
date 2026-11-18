@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package flock.services.vs.v1;
+
+import "google/protobuf/empty.proto";
+import "buf/validate/validate.proto";
+import "flock/api/config/vs/v1/virtual_server.proto";
+import "flock/services/core/v1/requests.proto";
+import "flock/services/core/v1/filter.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/services/vs/v1;svcvs";
+
+// CreateVSRequest is the request message for the CreateVS method.
+message CreateVSRequest {
+  // The virtual server to create. Its UUID is ignored, the controller generates one.
+  flock.api.config.vs.v1.VirtualServer vs = 1 [(buf.validate.field) = {required: true}];
+}
+
+// UpdateVSRequest is the request message for the UpdateVS method.
+message UpdateVSRequest {
+  // The UUID of the virtual server to update.
+  string UUID = 1 [(buf.validate.field).string = {min_len: 1}];
+  // The new content of the virtual server, it replaces the stored one. Its UUID is ignored and set to the UUID above.
+  flock.api.config.vs.v1.VirtualServer vs = 2 [(buf.validate.field) = {required: true}];
+}
+
+// VSResponse is the response message of the VirtualServer methods returning one virtual server.
+message VSResponse {
+  // The virtual server as stored by the controller, with its uuid.
+  flock.api.config.vs.v1.VirtualServer vs = 1 [(buf.validate.field) = {required: true}];
+}
+
+// ListVSRequest is the request message for the ListVS method.
+message ListVSRequest {
+  // The maximum number of virtual servers to return, 50 when 0.
+  int32 limit = 1 [(buf.validate.field).int32 = {gte: 0, lte: 100}];
+  // The number of virtual servers to skip before the first one returned, for paging.
+  int32 offset = 2 [(buf.validate.field).int32 = {gte: 0}];
+  // The filters the virtual servers must match, see ListFilter.
+  repeated core.v1.ListFilter filters = 3;
+}
+
+// ListVSResponse is the response message for the ListVS method.
+message ListVSResponse {
+  // The virtual servers of the page.
+  repeated flock.api.config.vs.v1.VirtualServer vs = 1 [(buf.validate.field).repeated = {min_items: 1}];
+}
+
+// VirtualServer is the service that provides the API for managing virtual servers.
+service VirtualServer {
+  // CreateVS creates a new virtual server. Every backend and certificate it references must exist (NotFound
+  // otherwise), and a domain can be in one of its virtual hosts only (InvalidArgument otherwise). A caller who is not
+  // admin becomes its owner.
+  rpc CreateVS(CreateVSRequest)
+      returns (VSResponse) {
+  }
+  // ReadVS returns the virtual server with the given UUID. It needs the reader role on the virtual server.
+  rpc ReadVS(flock.services.core.v1.UuidRequest)
+      returns (VSResponse) {
+  }
+  // UpdateVS replaces the virtual server with the given UUID, with the same checks as CreateVS. The virtual servers
+  // of each VIP using it must still be able to share their ports (InvalidArgument otherwise). It needs the writer role
+  // on the virtual server, and the owner role when the name changes.
+  rpc UpdateVS(UpdateVSRequest)
+      returns (VSResponse) {
+  }
+  // DeleteVS deletes the virtual server with the given UUID. It needs the owner role on the virtual server and fails
+  // with FailedPrecondition while a VIP uses it.
+  rpc DeleteVS(flock.services.core.v1.UuidRequest)
+      returns (google.protobuf.Empty) {
+  }
+  // ListVS returns the virtual servers the caller can read that match the filters. An admin gets every virtual
+  // server, or those of the user given in the as_user header.
+  rpc ListVS(ListVSRequest)
+      returns (ListVSResponse) {
+  }
+}

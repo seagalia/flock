@@ -1,0 +1,178 @@
+<mtx-popover #popoverDiff="mtxPopover" [closeOnPanelClick]="true">
+  @for (change of shownDiff(); track $index) {
+    <p [class]="change.type" class="diff">
+      @switch (change.type) {
+        @case (Operation.ADD) {
+          <mat-icon>add</mat-icon>
+        }
+        @case (Operation.REMOVE) {
+          <mat-icon>remove</mat-icon>
+        }
+        @default {
+          <mat-icon>update</mat-icon>
+        }
+      }
+      {{ change.path }}
+      @if (change.value !== undefined) {
+        : {{ change.value }}
+      }
+    </p>
+  } @empty {
+    <p>No change found between the applied and the errored resource.</p>
+  }
+</mtx-popover>
+
+<h1>Resource Status</h1>
+<mat-divider />
+
+<div class="surface">
+  <div class="control">
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>Select an Instance</mat-label>
+      <mat-select (selectionChange)="instances.choose($event.value)" [value]="instances.current()">
+        @for (one of instances.all(); track one.UUID) {
+          <mat-option [value]="one">{{ one.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>Select an Agent</mat-label>
+      <mat-select (selectionChange)="agentUuid.set($event.value)" [value]="agentUuid()">
+        <mat-option [value]="anyAgent">Any</mat-option>
+        @for (agent of instances.agents(); track agent.UUID) {
+          <mat-option [value]="agent.UUID">{{ agentLabel(agent) }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>Select a Resource Type</mat-label>
+      <mat-select (selectionChange)="kind.set($event.value)" [value]="kind()">
+        @for (choice of kindChoices; track choice.name) {
+          <mat-option [value]="choice">{{ choice.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <div class="table-scroll">
+    @if (kind().name === 'endpoint') {
+      <table [dataSource]="rows()" mat-table multiTemplateDataRows>
+        <ng-container matColumnDef="backend_uuid">
+          <th *matHeaderCellDef mat-header-cell>Backend UUID</th>
+          <td *matCellDef="let row" mat-cell>{{ row.id }}</td>
+        </ng-container>
+        <ng-container matColumnDef="state">
+          <th *matHeaderCellDef mat-header-cell>Backend State</th>
+          <td *matCellDef="let row" mat-cell>
+            <span [class]="row.endpointStats?.healthy ? 'chip ok' : 'chip error'">
+              {{ row.endpointStats?.healthy ? 'Healthy' : 'Unhealthy' }}
+            </span>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="error">
+          <th *matHeaderCellDef mat-header-cell>Error</th>
+          <td *matCellDef="let row" mat-cell>{{ row.error }}</td>
+        </ng-container>
+        <ng-container matColumnDef="expand">
+          <th *matHeaderCellDef aria-label="row actions" mat-header-cell>&nbsp;</th>
+          <td *matCellDef="let row" mat-cell>
+            <button
+              (click)="toggle(row); $event.stopPropagation()"
+              aria-label="Expand row"
+              mat-icon-button
+            >
+              <mat-icon
+                >{{ isExpanded(row) ? 'keyboard_arrow_up' : 'keyboard_arrow_down' }}
+              </mat-icon>
+            </button>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="expandedDetail">
+          <td *matCellDef="let row" [attr.colspan]="endpointColumns.length" mat-cell>
+            @if (isExpanded(row)) {
+              <flock-backend-stats [backendUuid]="row.id" [endpointStats]="row.endpointStats" />
+            }
+          </td>
+        </ng-container>
+        <tr *matHeaderRowDef="endpointColumns" mat-header-row></tr>
+        <tr
+          (click)="toggle(row)"
+          *matRowDef="let row; columns: endpointColumns"
+          [class.expanded-row]="isExpanded(row)"
+          class="element-row clickable"
+          mat-row
+        ></tr>
+        <tr *matRowDef="let row; columns: ['expandedDetail']" class="detail-row" mat-row></tr>
+        <tr *matNoDataRow class="mat-mdc-row">
+          <td [attr.colspan]="endpointColumns.length" class="mat-mdc-cell no-data">
+            No status reported.
+          </td>
+        </tr>
+      </table>
+    } @else {
+      <table [dataSource]="rows()" mat-table>
+        <ng-container matColumnDef="name">
+          <th *matHeaderCellDef mat-header-cell>Name</th>
+          <td *matCellDef="let row" mat-cell>
+            <a [queryParams]="{ uuid: row.id }" [routerLink]="kind().link">{{
+              row.name || row.id
+            }}</a>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="state">
+          <th *matHeaderCellDef mat-header-cell>State</th>
+          <td *matCellDef="let row" mat-cell>
+            @switch (row.state) {
+              @case (State.ERRORED) {
+                <span
+                  (mouseenter)="shownDiff.set(row.diff)"
+                  [mtxPopoverTriggerFor]="popoverDiff"
+                  class="chip clickable error"
+                  mtxPopoverTriggerOn="hover"
+                  >Errored</span
+                >
+              }
+              @case (State.OK) {
+                <span class="chip ok">Ok</span>
+              }
+              @case (State.ADDING) {
+                <span class="chip in-progress">Adding</span>
+              }
+              @case (State.REMOVING) {
+                <span class="chip in-progress">Removing</span>
+              }
+              @default {
+                <span class="chip unknown">Unknown</span>
+              }
+            }
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="error">
+          <th *matHeaderCellDef mat-header-cell>Error</th>
+          <td *matCellDef="let row" mat-cell>{{ row.error }}</td>
+        </ng-container>
+        <ng-container matColumnDef="notes">
+          <th *matHeaderCellDef mat-header-cell>Notes</th>
+          <td *matCellDef="let row" mat-cell>
+            <div class="notes">
+              @for (note of row.notes; track $index) {
+                <span
+                  [class]="note.level === Note_Level.WARNING ? 'chip warning' : 'chip unknown'"
+                  [matTooltip]="note.message"
+                  >{{ noteLabel(note) }}</span
+                >
+              }
+            </div>
+          </td>
+        </ng-container>
+        <tr *matHeaderRowDef="resourceColumns" mat-header-row></tr>
+        <tr *matRowDef="let row; columns: resourceColumns" mat-row></tr>
+        <tr *matNoDataRow class="mat-mdc-row">
+          <td [attr.colspan]="resourceColumns.length" class="mat-mdc-cell no-data">
+            No status reported.
+          </td>
+        </tr>
+      </table>
+    }
+  </div>
+</div>

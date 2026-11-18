@@ -1,0 +1,109 @@
+syntax = "proto3";
+
+package flock.api.config.zone.v1;
+
+import "buf/validate/validate.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/api/config/zone/v1;zone";
+
+// Subnet is a CIDR of a pool. For an IPv4 subnet with a prefix length of 30 or less, the network and broadcast
+// addresses are never allocated.
+message Subnet {
+  // IP is an IP address of the subnet, the host bits are masked with the prefix length.
+  string ip = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.ip = true,
+    (buf.validate.field).string.max_len = 45
+  ];
+  // PrefixLength is the prefix length of the subnet, at most 32 for an IPv4 address and 128 for an IPv6 one.
+  int32 prefix_length = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 128
+  }];
+}
+
+// IpRange is an inclusive range of IP addresses of a pool. Both bounds are of the same IP family and ip_min is lower
+// than or equal to ip_max.
+message IpRange {
+  // IpMin is the first IP address of the range.
+  string ip_min = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.ip = true,
+    (buf.validate.field).string.max_len = 45
+  ];
+  // IpMax is the last IP address of the range, included in it.
+  string ip_max = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.ip = true,
+    (buf.validate.field).string.max_len = 45
+  ];
+}
+
+// IpPool is a named set of subnets and ip ranges from which the ipam picks the IP of a VIP. The subnets and ranges of
+// all the pools of a zone must not overlap.
+message IpPool {
+  // Privacy tells if a pool can be the default pool of its zone.
+  enum Privacy {
+    // PUBLIC pool, the first public pool of the zone is its default pool, used when a VIP is registered without a
+    // pool selector.
+    PUBLIC = 0;
+    // PRIVATE pool, only used when a VIP is registered with a selector matching it.
+    PRIVATE = 1;
+  }
+
+  option (buf.validate.message).cel = {
+    id: "ip_pool.addresses"
+    message: "subnets or ip_ranges must be set"
+    expression: "this.subnets.size() > 0 || this.ip_ranges.size() > 0"
+  };
+
+  // Name of the pool, unique in the zone. A pool selector given at VIP registration finds the pool by it.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 253
+  }];
+  // Privacy level of the pool, PUBLIC by default.
+  Privacy privacy = 2 [(buf.validate.field).enum.defined_only = true];
+  // Subnets from which an IP can be picked.
+  repeated Subnet subnets = 3 [(buf.validate.field).repeated.max_items = 256];
+  // IpRanges from which an IP can be picked.
+  repeated IpRange ip_ranges = 4 [(buf.validate.field).repeated.max_items = 256];
+  // Metadata of the pool. A pool selector without name picks the first pool holding all the metadata it gives.
+  map<string, string> metadata = 5 [(buf.validate.field).map = {
+    max_pairs: 64
+    keys: {
+      string: {max_len: 253}
+    }
+    values: {
+      string: {max_len: 4096}
+    }
+  }];
+}
+
+// Zone is a place where instances run, with the IPs its VIPs can use.
+message Zone {
+
+  // UUID is the unique identifier of the zone.
+  string UUID = 1;
+  // Name of the zone. It is matched against the zones of the instantiators of the controller configuration to find
+  // the instantiator of an instance created in this zone.
+  string name = 2 [(buf.validate.field).string = {min_len: 1}];
+  // Zone is an arbitrary name of the real zone on your deployment. It is only shown in listings.
+  string zone = 3 [(buf.validate.field).string.max_len = 253];
+
+  // Pools are the named sets of IPs of the zone. After the creation of the zone, they change with the pool methods of
+  // the Zone service only. A zone without pools is unmanaged and its VIPs can use any IP.
+  repeated IpPool pools = 4 [
+    (buf.validate.field).repeated.max_items = 64,
+    (buf.validate.field).cel = {
+      id: "unique_names"
+      message: "names must be unique"
+      expression: "this.map(p, p.name).unique()"
+    }
+  ];
+
+  // Metadata of the zone. A zone selector of VIP registration finds the zone by its metadata. A value
+  // `secret://<secret uuid>/<key>` points at a value of a Secret instead of holding it, see
+  // flock.api.config.secret.v1.Secret.
+  map<string, string> metadata = 5;
+}

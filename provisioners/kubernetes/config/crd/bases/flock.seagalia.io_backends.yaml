@@ -1,0 +1,1694 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.22.0
+  name: backends.flock.seagalia.io
+spec:
+  group: flock.seagalia.io
+  names:
+    kind: Backend
+    listKind: BackendList
+    plural: backends
+    singular: backend
+  scope: Cluster
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Backend is the flock backend of the same name, its spec converted
+          by ToProto.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: spec defines the desired state of Backend
+            properties:
+              ca:
+                description: |-
+                  PEM CA used to verify the certificates of the endpoints, for TLS connections and TLS health checks. When empty,
+                  the system CAs of the agent are used.
+                maxLength: 65536
+                type: string
+              connectTimeoutMilliseconds:
+                description: Timeout to establish a connection to an endpoint. When
+                  unset, the agent applies its own default.
+                format: int32
+                type: integer
+              dns:
+                description: Endpoints resolved from a DNS name.
+                properties:
+                  host:
+                    description: The DNS name to resolve.
+                    maxLength: 253
+                    minLength: 1
+                    type: string
+                  lookupFamily:
+                    description: The DNS lookup family to use when resolving the host.
+                      Defaults to V6_PREFERRED.
+                    enum:
+                    - V6Preferred
+                    - V4Preferred
+                    - V4Only
+                    - V6Only
+                    - All
+                    type: string
+                  nameservers:
+                    description: |-
+                      DNS servers to query, tried in order until one gives an answer. When empty, the agent uses the DNS servers of its
+                      host.
+                    items:
+                      description: |-
+                        IPAddr represents an IP address and port.
+                        Optionally a weight can be set for weighted load balancing policy.
+                      properties:
+                        ip:
+                          description: IPv4 or IPv6 address.
+                          maxLength: 45
+                          type: string
+                          x-kubernetes-validations:
+                          - message: must be an IP address
+                            rule: isIP(self)
+                        loadBalancingWeight:
+                          description: |-
+                            Weight of the endpoint for weighted load balancing policies. 0 (default) gives the endpoint the default weight
+                            of the agent, it never stops the traffic to the endpoint.
+                          format: int32
+                          minimum: 0
+                          type: integer
+                        port:
+                          description: Port number.
+                          exclusiveMinimum: true
+                          format: int32
+                          maximum: 65535
+                          minimum: 0
+                          type: integer
+                      required:
+                      - ip
+                      - port
+                      type: object
+                    maxItems: 16
+                    type: array
+                    x-kubernetes-list-type: atomic
+                  port:
+                    description: Port of the endpoints, the same for every address
+                      found.
+                    format: int32
+                    maximum: 65535
+                    minimum: 1
+                    type: integer
+                required:
+                - host
+                - port
+                type: object
+              eds:
+                description: Endpoints given by a discovery server.
+                properties:
+                  ca:
+                    description: PEM CA used to verify the certificate of the discovery
+                      server. When empty, the system CAs of the agent are used.
+                    maxLength: 65536
+                    type: string
+                  headers:
+                    description: HTTP headers (gRPC metadata for a gRPC server) added
+                      to each query.
+                    items:
+                      description: Header name/value pair.
+                      properties:
+                        key:
+                          description: Header name.
+                          maxLength: 16384
+                          minLength: 1
+                          pattern: ^[^\x00\x0A\x0D]+$
+                          type: string
+                        value:
+                          description: Header value.
+                          maxLength: 16384
+                          pattern: ^[^\x00\x0A\x0D]+$
+                          type: string
+                        valueFromSecret:
+                          description: |-
+                            Value of a secret, for a header carrying a credential such as `Authorization`. Agents send the value of the
+                            secret, an empty value until they hold the secret.
+                          properties:
+                            key:
+                              description: Key of the value in the data of the secret.
+                              maxLength: 253
+                              minLength: 1
+                              type: string
+                            secretRef:
+                              description: UUID of the secret.
+                              properties:
+                                name:
+                                  description: name of the object.
+                                  maxLength: 253
+                                  minLength: 1
+                                  pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                                  type: string
+                              required:
+                              - name
+                              type: object
+                          required:
+                          - key
+                          - secretRef
+                          type: object
+                      required:
+                      - key
+                      type: object
+                      x-kubernetes-validations:
+                      - message: at most one of value, valueFromSecret can be set
+                        rule: '[has(self.value), has(self.valueFromSecret)].filter(x,
+                          x).size() <= 1'
+                    maxItems: 64
+                    type: array
+                    x-kubernetes-list-type: atomic
+                  serviceName:
+                    description: |-
+                      Name of the service to get the endpoints of, sent as the `service_name` query parameter or request field.
+                      When empty, the http query has no `service_name` parameter.
+                    maxLength: 253
+                    type: string
+                  url:
+                    description: |-
+                      URL of the discovery server. Its scheme is http, https, grpc or grpcs. With grpc and grpcs, the path is a prefix put
+                      before the procedure, for a server behind a reverse proxy, so `grpc://vigie:8080` is the usual form and a url that
+                      keeps `/services` fails with `Unimplemented`. Its user info is sent as basic auth, the password taken from a
+                      secret.
+                    properties:
+                      host:
+                        description: Host name or IP address, without port.
+                        maxLength: 253
+                        minLength: 1
+                        type: string
+                      path:
+                        description: Path of the URL, appended right after the host
+                          and port, so it starts with `/`.
+                        maxLength: 2048
+                        type: string
+                      port:
+                        description: Port. 0 (default) leaves it out of the URL, so
+                          the default port of the scheme applies.
+                        format: int32
+                        minimum: 0
+                        type: integer
+                      scheme:
+                        description: Scheme of the URL, e.g. `https`.
+                        maxLength: 16
+                        minLength: 1
+                        type: string
+                      userInfo:
+                        description: Credentials sent as HTTP basic auth. Empty sends
+                          none.
+                        properties:
+                          passwordFromSecret:
+                            description: Value of a secret used as the password.
+                            properties:
+                              key:
+                                description: Key of the value in the data of the secret.
+                                maxLength: 253
+                                minLength: 1
+                                type: string
+                              secretRef:
+                                description: UUID of the secret.
+                                properties:
+                                  name:
+                                    description: name of the object.
+                                    maxLength: 253
+                                    minLength: 1
+                                    pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                                    type: string
+                                required:
+                                - name
+                                type: object
+                            required:
+                            - key
+                            - secretRef
+                            type: object
+                          user:
+                            description: User name.
+                            maxLength: 256
+                            type: string
+                        type: object
+                        x-kubernetes-validations:
+                        - message: a password needs a user
+                          rule: '!has(self.passwordFromSecret) || (has(self.user)
+                            && self.user.size() > 0)'
+                    required:
+                    - host
+                    - scheme
+                    type: object
+                    x-kubernetes-validations:
+                    - message: scheme must be http, https, grpc or grpcs
+                      rule: self.scheme in ['http', 'https', 'grpc', 'grpcs']
+                type: object
+              enableProxyProtocol:
+                description: Send a proxy protocol header to the endpoints at the
+                  start of each connection, so they get the client address.
+                type: boolean
+              enableTLS:
+                description: |-
+                  Connect to the endpoints with TLS. It applies to routes the agent proxies, a route forwarding packets unchanged to
+                  the endpoints ignores it.
+                type: boolean
+              healthCheck:
+                description: Health check run by the agent on every endpoint. Traffic
+                  only goes to the endpoints it reports healthy.
+                properties:
+                  altPort:
+                    description: |-
+                      Port to health check instead of the endpoint's own port. 0 (default) checks the endpoint port.
+                      The UDP health check with `receive` set ignores it.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  enableTLS:
+                    description: |-
+                      Runs the health check over TLS, verified with the `ca` and `sni` of the backend. Applies to the HTTP, TCP and gRPC
+                      health checks and is passed to plugins. The UDP health check ignores it. Defaults to false.
+                    type: boolean
+                  grpcHealthCheck:
+                    description: gRPC health check.
+                    properties:
+                      authority:
+                        description: The value of the :authority header in the gRPC
+                          health check request.
+                        maxLength: 253
+                        pattern: ^[^\x00\x0A\x0D]+$
+                        type: string
+                      serviceName:
+                        description: |-
+                          An optional service name parameter which will be sent to gRPC service in
+                          `grpc.health.v1.HealthCheckRequest
+                          <https://github.com/grpc/grpc/blob/master/src/proto/grpc/health/v1/health.proto#L20>`_.
+                          message. See `gRPC health-checking overview
+                          <https://github.com/grpc/grpc/blob/master/doc/health-checking.md>`_ for more information.
+                        maxLength: 253
+                        type: string
+                    type: object
+                  healthyThreshold:
+                    description: |-
+                      The number of successful health checks required before an unhealthy host is marked
+                      healthy again. Note that during startup, only a single successful health check is
+                      required to mark a host healthy.
+                      Defaults to 1 if not specified.
+                    exclusiveMinimum: true
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  httpHealthCheck:
+                    description: HTTP health check.
+                    properties:
+                      codecClientType:
+                        description: Use specified application protocol for health
+                          checks. Defaults to HTTP1.
+                        enum:
+                        - HTTP1
+                        - HTTP2
+                        - HTTP3
+                        type: string
+                      expectedStatuses:
+                        description: |-
+                          Range of HTTP response statuses considered healthy, following the half-open semantics of
+                          Int64Range (start included, end excluded).
+                          Defaults to [200, 300).
+                        properties:
+                          end:
+                            description: End of the range, exclusive.
+                            format: int64
+                            maximum: 9007199254740991
+                            minimum: -9007199254740991
+                            type: integer
+                          start:
+                            description: Start of the range, inclusive.
+                            format: int64
+                            maximum: 9007199254740991
+                            minimum: -9007199254740991
+                            type: integer
+                        type: object
+                      host:
+                        description: |-
+                          The value of the host header in the HTTP health check request. If
+                          left empty (default value), the endpoint address (`ip:port`) is used.
+                        maxLength: 253
+                        pattern: ^[^\x00\x0A\x0D]+$
+                        type: string
+                      method:
+                        description: |-
+                          HTTP Method that will be used for health checking, default is "GET".
+                          GET, HEAD, POST, PUT, DELETE, OPTIONS, TRACE, PATCH methods are supported, the body comes from `send`.
+                          CONNECT method is disallowed because it is not appropriate for health check request.
+                          If a response outside [200, 300) is expected by the method, it needs to be set in expected_statuses.
+                        enum:
+                        - GET
+                        - HEAD
+                        - POST
+                        - PUT
+                        - DELETE
+                        - CONNECT
+                        - OPTIONS
+                        - TRACE
+                        - PATCH
+                        type: string
+                        x-kubernetes-validations:
+                        - message: must not be one of CONNECT
+                          rule: '!(self in ["CONNECT"])'
+                      path:
+                        description: |-
+                          Specifies the HTTP path that will be requested during health checking. For example
+                          */healthcheck*. Defaults to `/`.
+                        maxLength: 2048
+                        minLength: 1
+                        pattern: ^[^\x00\x0A\x0D]+$
+                        type: string
+                      receive:
+                        description: When set, the response body must contain these
+                          bytes for the check to succeed.
+                        properties:
+                          binary:
+                            description: Binary payload.
+                            format: byte
+                            maxLength: 5464
+                            type: string
+                          text:
+                            description: Text payload, used as its UTF-8 bytes.
+                            maxLength: 4096
+                            minLength: 1
+                            type: string
+                        type: object
+                        x-kubernetes-validations:
+                        - message: exactly one of text, binary must be set
+                          rule: '[has(self.text), has(self.binary)].exists_one(x,
+                            x)'
+                      requestHeadersToAdd:
+                        description: |-
+                          Specifies a list of HTTP headers that should be added to each request that is sent to the
+                          health checked backend.
+                        items:
+                          description: Header name/value pair plus option to control
+                            append behavior.
+                          properties:
+                            append:
+                              description: |-
+                                When true, the value is added next to the existing values of the header. When false (default), it replaces
+                                them.
+                              type: boolean
+                            header:
+                              description: Header name/value pair that this option
+                                applies to.
+                              properties:
+                                key:
+                                  description: Header name.
+                                  maxLength: 16384
+                                  minLength: 1
+                                  pattern: ^[^\x00\x0A\x0D]+$
+                                  type: string
+                                value:
+                                  description: Header value.
+                                  maxLength: 16384
+                                  pattern: ^[^\x00\x0A\x0D]+$
+                                  type: string
+                                valueFromSecret:
+                                  description: |-
+                                    Value of a secret, for a header carrying a credential such as `Authorization`. Agents send the value of the
+                                    secret, an empty value until they hold the secret.
+                                  properties:
+                                    key:
+                                      description: Key of the value in the data of
+                                        the secret.
+                                      maxLength: 253
+                                      minLength: 1
+                                      type: string
+                                    secretRef:
+                                      description: UUID of the secret.
+                                      properties:
+                                        name:
+                                          description: name of the object.
+                                          maxLength: 253
+                                          minLength: 1
+                                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                                          type: string
+                                      required:
+                                      - name
+                                      type: object
+                                  required:
+                                  - key
+                                  - secretRef
+                                  type: object
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-validations:
+                              - message: at most one of value, valueFromSecret can
+                                  be set
+                                rule: '[has(self.value), has(self.valueFromSecret)].filter(x,
+                                  x).size() <= 1'
+                          required:
+                          - header
+                          type: object
+                        maxItems: 1000
+                        type: array
+                        x-kubernetes-list-type: atomic
+                      send:
+                        description: Body of the health check request. Empty (default)
+                          sends no body.
+                        properties:
+                          binary:
+                            description: Binary payload.
+                            format: byte
+                            maxLength: 5464
+                            type: string
+                          text:
+                            description: Text payload, used as its UTF-8 bytes.
+                            maxLength: 4096
+                            minLength: 1
+                            type: string
+                        type: object
+                        x-kubernetes-validations:
+                        - message: exactly one of text, binary must be set
+                          rule: '[has(self.text), has(self.binary)].exists_one(x,
+                            x)'
+                    type: object
+                  intervalMilliseconds:
+                    description: |-
+                      The interval between health checks of an endpoint.
+                      Defaults to 10s if not specified.
+                    exclusiveMinimum: true
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  noHealthCheck:
+                    description: No health check, every endpoint is considered healthy.
+                    type: object
+                  pluginHealthCheck:
+                    description: Health check run by a program declared in the agent
+                      configuration.
+                    properties:
+                      name:
+                        description: |-
+                          The name of the plugin to use for health checking, as declared in the agent configuration. The check fails when
+                          the agent has no plugin of that name.
+                        maxLength: 253
+                        minLength: 1
+                        type: string
+                      options:
+                        description: The options to pass to the plugin.
+                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
+                    required:
+                    - name
+                    type: object
+                  tcpHealthCheck:
+                    description: TCP health check.
+                    properties:
+                      receive:
+                        description: |-
+                          Blocks the response must start with, read one after the other. Each one must match the next bytes received
+                          exactly, waiting up to `timeout` for them. Empty skips the response check.
+                        items:
+                          description: Bytes sent or expected by a health check, given
+                            as text or as binary. Exactly one must be set.
+                          properties:
+                            binary:
+                              description: Binary payload.
+                              format: byte
+                              maxLength: 5464
+                              type: string
+                            text:
+                              description: Text payload, used as its UTF-8 bytes.
+                              maxLength: 4096
+                              minLength: 1
+                              type: string
+                          type: object
+                          x-kubernetes-validations:
+                          - message: exactly one of text, binary must be set
+                            rule: '[has(self.text), has(self.binary)].exists_one(x,
+                              x)'
+                        maxItems: 16
+                        type: array
+                        x-kubernetes-list-type: atomic
+                      send:
+                        description: Bytes written once connected. Empty payloads
+                          imply a connect-only health check.
+                        properties:
+                          binary:
+                            description: Binary payload.
+                            format: byte
+                            maxLength: 5464
+                            type: string
+                          text:
+                            description: Text payload, used as its UTF-8 bytes.
+                            maxLength: 4096
+                            minLength: 1
+                            type: string
+                        type: object
+                        x-kubernetes-validations:
+                        - message: exactly one of text, binary must be set
+                          rule: '[has(self.text), has(self.binary)].exists_one(x,
+                            x)'
+                    type: object
+                  timeoutMilliseconds:
+                    description: |-
+                      The time to wait for a health check response. If the timeout is reached the
+                      health check attempt will be considered a failure.
+                      Defaults to 30s if not specified.
+                    exclusiveMinimum: true
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  udpHealthCheck:
+                    description: UDP health check.
+                    properties:
+                      delayMilliseconds:
+                        description: Delay is how long each read of the ICMP socket
+                          waits before reading again, in the weak method. Defaults
+                          to 1s.
+                        exclusiveMinimum: true
+                        format: int32
+                        minimum: 0
+                        type: integer
+                      pingTimeoutMilliseconds:
+                        description: PingTimeout specifies the timeout of the ICMP
+                          ping of the weak method. Defaults to 5s.
+                        exclusiveMinimum: true
+                        format: int32
+                        minimum: 0
+                        type: integer
+                      receive:
+                        description: |-
+                          Expected datagrams. Each block is read from the next datagram received, waiting up to `timeout`, and must equal
+                          its first bytes.
+                        items:
+                          description: Bytes sent or expected by a health check, given
+                            as text or as binary. Exactly one must be set.
+                          properties:
+                            binary:
+                              description: Binary payload.
+                              format: byte
+                              maxLength: 5464
+                              type: string
+                            text:
+                              description: Text payload, used as its UTF-8 bytes.
+                              maxLength: 4096
+                              minLength: 1
+                              type: string
+                          type: object
+                          x-kubernetes-validations:
+                          - message: exactly one of text, binary must be set
+                            rule: '[has(self.text), has(self.binary)].exists_one(x,
+                              x)'
+                        maxItems: 16
+                        type: array
+                        x-kubernetes-list-type: atomic
+                      send:
+                        description: Payload to send. Something is always sent, so
+                          the agent sends a default payload when it is left empty.
+                        properties:
+                          binary:
+                            description: Binary payload.
+                            format: byte
+                            maxLength: 5464
+                            type: string
+                          text:
+                            description: Text payload, used as its UTF-8 bytes.
+                            maxLength: 4096
+                            minLength: 1
+                            type: string
+                        type: object
+                        x-kubernetes-validations:
+                        - message: exactly one of text, binary must be set
+                          rule: '[has(self.text), has(self.binary)].exists_one(x,
+                            x)'
+                    type: object
+                  unhealthyIntervalMilliseconds:
+                    description: |-
+                      The "unhealthy interval" is a health check interval that is used for hosts that are marked as
+                      unhealthy. As soon as the host is marked as healthy, Flock will shift back to using the
+                      standard health check interval that is defined.
+
+                      The default value for "unhealthy interval" is the same as "interval".
+                    exclusiveMinimum: true
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  unhealthyThreshold:
+                    description: |-
+                      The number of consecutive failed health checks required before a host is marked
+                      unhealthy.
+                      Defaults to 3 if not specified.
+                    exclusiveMinimum: true
+                    format: int32
+                    minimum: 0
+                    type: integer
+                type: object
+                x-kubernetes-validations:
+                - message: exactly one of httpHealthCheck, tcpHealthCheck, grpcHealthCheck,
+                    noHealthCheck, pluginHealthCheck, udpHealthCheck must be set
+                  rule: '[has(self.httpHealthCheck), has(self.tcpHealthCheck), has(self.grpcHealthCheck),
+                    has(self.noHealthCheck), has(self.pluginHealthCheck), has(self.udpHealthCheck)].exists_one(x,
+                    x)'
+              httpProtocolOptions:
+                description: |-
+                  HttpProtocolOptions specifies Http upstream protocol options.
+                  It only applies to http virtual server type.
+                  This is an extension point for any load balancer specific options.
+                  valid extensions are:
+                  - flock.extensions.common.starling_options.v1.HttpProtocolOptions
+                properties:
+                  starling:
+                    description: |-
+                      HttpProtocolOptions sets the HTTP protocol envoy uses toward the endpoints of a backend, packed in the
+                      `http_protocol_options` field of `flock.api.config.backend.v1.Backend`. The starling agent passes it to envoy as the
+                      HTTP protocol options of the envoy cluster of the backend. When the field is unset, envoy speaks HTTP/1.1 to the
+                      backend. It only matters for the traffic envoy proxies over HTTP, i.e. the routes of http virtual servers.
+                    properties:
+                      autoConfig:
+                        description: AutoConfig uses the protocol negotiated by ALPN
+                          with the backend.
+                        properties:
+                          http2ProtocolOptions:
+                            description: Http2ProtocolOptions are the options used
+                              when HTTP/2 is negotiated.
+                            properties:
+                              allowConnect:
+                                description: AllowConnect allows proxying websockets
+                                  and other upgrades over HTTP/2 CONNECT.
+                                type: boolean
+                              connectionKeepalive:
+                                description: ConnectionKeepalive sends PING frames
+                                  to check the connection, and closes it when the
+                                  peer doesn't answer in time.
+                                properties:
+                                  connectionIdleIntervalMilliseconds:
+                                    description: |-
+                                      ConnectionIdleInterval would send a PING before a new stream on a connection idle for this long. The starling
+                                      agent doesn't pass it to envoy, so it has no effect.
+                                    format: int32
+                                    minimum: 1
+                                    type: integer
+                                  intervalMilliseconds:
+                                    description: Interval is the period of the PING
+                                      frames, at least 1ms. No periodic PING is sent
+                                      when unset.
+                                    format: int32
+                                    minimum: 1
+                                    type: integer
+                                  timeoutMilliseconds:
+                                    description: |-
+                                      Timeout is how long to wait for the answer to a PING before closing the connection, at least 1ms. Any frame
+                                      received on the connection extends the wait, so head-of-line blocking doesn't close a healthy connection.
+                                    format: int32
+                                    minimum: 1
+                                    type: integer
+                                required:
+                                - connectionIdleIntervalMilliseconds
+                                - intervalMilliseconds
+                                - timeoutMilliseconds
+                                type: object
+                              hpackTableSize:
+                                description: |-
+                                  HpackTableSize is the maximum size in bytes of the HPACK dynamic table the encoder may use
+                                  (https://httpwg.org/specs/rfc7541.html#rfc.section.4.2), 4096 when unset. 0 disables header compression.
+                                format: int32
+                                minimum: 0
+                                type: integer
+                              initialConnectionWindowSize:
+                                description: |-
+                                  InitialConnectionWindowSize is the initial flow control window of a connection in bytes, from 65535 to 2147483647.
+                                  The starling agent uses 1048576 when unset.
+                                format: int32
+                                maximum: 2147483647
+                                minimum: 65535
+                                type: integer
+                              initialStreamWindowSize:
+                                description: |-
+                                  InitialStreamWindowSize is the initial flow control window of a stream in bytes
+                                  (https://httpwg.org/specs/rfc7540.html#rfc.section.6.9.2), from 65535 to 2147483647. The starling agent uses 65536
+                                  when unset. It also bounds the bytes envoy buffers per stream in its HTTP/2 codec.
+                                format: int32
+                                maximum: 2147483647
+                                minimum: 65535
+                                type: integer
+                              maxConcurrentStreams:
+                                description: |-
+                                  MaxConcurrentStreams is the maximum number of concurrent streams of one connection
+                                  (https://httpwg.org/specs/rfc7540.html#rfc.section.5.1.2), from 1 to 2147483647. When unset it is 1000000 for the
+                                  client connections of an http virtual server, and 2147483647 toward a backend.
+
+                                  Toward a backend it also limits the streams envoy opens on one connection. Over the limit, envoy queues the
+                                  requests or opens more connections. Envoy lowers it on a connection when the backend announces a lower limit.
+                                format: int32
+                                maximum: 2147483647
+                                minimum: 1
+                                type: integer
+                              maxConsecutiveInboundFramesWithEmptyPayload:
+                                description: |-
+                                  MaxConsecutiveInboundFramesWithEmptyPayload is the maximum number of consecutive HEADERS, CONTINUATION and DATA
+                                  frames received with an empty payload and no end of stream flag, 1 when unset. Over it, envoy closes the connection
+                                  as a flood and counts it in `http2.inbound_empty_frames_flood`. 0 closes the connection on the first such frame.
+                                format: int32
+                                minimum: 0
+                                type: integer
+                              maxInboundPriorityFramesPerStream:
+                                description: |-
+                                  MaxInboundPriorityFramesPerStream limits the PRIORITY frames received, 100 when unset. Envoy closes the connection
+                                  as a flood, counted in `http2.inbound_priority_frames_flood`, when the PRIORITY frames received over its lifetime
+                                  exceed `max_inbound_priority_frames_per_stream * (1 + opened_streams)`. On a client connection `opened_streams`
+                                  grows when envoy receives the complete response headers from the backend. On a connection to a backend it grows
+                                  when envoy sends the HEADERS frame of a new stream.
+                                format: int32
+                                minimum: 0
+                                type: integer
+                              maxInboundWindowUpdateFramesPerDataFrameSent:
+                                description: |-
+                                  MaxInboundWindowUpdateFramesPerDataFrameSent limits the WINDOW_UPDATE frames received, 10 when unset. Envoy closes
+                                  the connection as a flood, counted in `http2.inbound_window_update_frames_flood`, when the WINDOW_UPDATE frames
+                                  received over its lifetime exceed
+                                  `5 + 2 * (opened_streams + max_inbound_window_update_frames_per_data_frame_sent * outbound_data_frames)`, with
+                                  `opened_streams` counted as for `max_inbound_priority_frames_per_stream`. 1 is enough for peers with basic flow
+                                  control, peers estimating the available bandwidth need at least 2.
+                                format: int32
+                                minimum: 1
+                                type: integer
+                              maxOutboundControlFrames:
+                                description: |-
+                                  MaxOutboundControlFrames is the maximum number of PING, SETTINGS and RST_STREAM frames waiting to be written to the
+                                  socket, 1000 when unset. Over it, envoy closes the connection as a flood and counts it in
+                                  `http2.outbound_control_flood`.
+                                format: int32
+                                minimum: 1
+                                type: integer
+                              maxOutboundFrames:
+                                description: |-
+                                  MaxOutboundFrames is the maximum number of frames of any type waiting to be written to the socket, 10000 when
+                                  unset. Over it, envoy closes the connection as a flood and counts it in `http2.outbound_flood`.
+                                format: int32
+                                minimum: 1
+                                type: integer
+                            required:
+                            - initialConnectionWindowSize
+                            - initialStreamWindowSize
+                            - maxConcurrentStreams
+                            - maxInboundWindowUpdateFramesPerDataFrameSent
+                            - maxOutboundControlFrames
+                            - maxOutboundFrames
+                            type: object
+                          http3ProtocolOptions:
+                            description: |-
+                              Http3ProtocolOptions enables HTTP/3 among the candidates, it is never used when unset. The starling agent sets
+                              no QUIC transport socket on the envoy cluster of a backend.
+                            properties:
+                              allowExtendedConnect:
+                                description: |-
+                                  AllowExtendedConnect allows proxying websockets and other upgrades over HTTP/3 CONNECT, with the headers of the
+                                  HTTP/2 extended CONNECT (RFC 8441) and the settings proposed for HTTP/3
+                                  (https://datatracker.ietf.org/doc/draft-ietf-httpbis-h3-websockets/), which is not an RFC yet.
+                                type: boolean
+                              overrideStreamErrorOnInvalidHTTPMessage:
+                                description: |-
+                                  OverrideStreamErrorOnInvalidHttpMessage only terminates the offending stream on an invalid HEADERS frame when
+                                  true. When false or unset, the whole connection is terminated.
+                                type: boolean
+                              quicProtocolOptions:
+                                description: QuicProtocolOptions are the QUIC options
+                                  of the connection.
+                                properties:
+                                  connectionKeepalive:
+                                    description: |-
+                                      ConnectionKeepalive probes the peer to get traffic back from it and push back the idle timeout of the connection.
+                                      When unset, a client connection sends a PING every 15s and a server connection doesn't probe.
+                                    properties:
+                                      initialIntervalMilliseconds:
+                                        description: |-
+                                          InitialInterval is the interval of the first probes, 0 or at least 1s. Each next probe waits exponentially longer,
+                                          up to `max_interval`. It should be shorter than the idle timeout of the connection and than `max_interval`. When
+                                          unset or 0, a server connection doesn't probe, and a client connection probes at `max_interval` (or the QUICHE
+                                          default) unless `max_interval` is 0.
+                                        format: int32
+                                        type: integer
+                                        x-kubernetes-validations:
+                                        - message: must be <= 0 or >= 1000
+                                          rule: self <= 0 || self >= 1000
+                                      maxIntervalMilliseconds:
+                                        description: |-
+                                          MaxInterval is the longest interval between two probes (PING or PATH_RESPONSE), 0 or at least 1s. It should be
+                                          shorter than the idle timeout of the connection. A client connection starts probing at this interval when
+                                          `initial_interval` is unset or 0. 0 disables probing, and the QUICHE default interval is used when unset.
+                                        format: int32
+                                        type: integer
+                                        x-kubernetes-validations:
+                                        - message: must be <= 0 or >= 1000
+                                          rule: self <= 0 || self >= 1000
+                                    type: object
+                                  initialConnectionWindowSize:
+                                    description: |-
+                                      InitialConnectionWindowSize is the initial flow control receive window of a connection in bytes, from 1 to
+                                      25165824, 65536 when unset.
+                                    format: int32
+                                    maximum: 25165824
+                                    minimum: 1
+                                    type: integer
+                                  initialStreamWindowSize:
+                                    description: |-
+                                      InitialStreamWindowSize is the initial flow control receive window of a stream in bytes
+                                      (https://tools.ietf.org/html/draft-ietf-quic-transport-34#section-4.1), from 1 to 16777216, 65536 when unset. It
+                                      also bounds the bytes envoy buffers per stream in the QUIC stream buffers.
+                                    format: int32
+                                    maximum: 16777216
+                                    minimum: 1
+                                    type: integer
+                                  maxConcurrentStreams:
+                                    description: MaxConcurrentStreams is the maximum
+                                      number of streams the client can negotiate per
+                                      connection, 100 when unset.
+                                    format: int32
+                                    minimum: 1
+                                    type: integer
+                                  numTimeoutsToTriggerPortMigration:
+                                    description: |-
+                                      NumTimeoutsToTriggerPortMigration is the number of QUIC path degrading timeouts (such as PTO) before a client
+                                      connection migrates to another port, from 0 to 5, 1 when unset. 0 disables the migration. It has no effect on
+                                      server connections.
+                                    format: int32
+                                    maximum: 5
+                                    minimum: 0
+                                    type: integer
+                                required:
+                                - initialConnectionWindowSize
+                                - initialStreamWindowSize
+                                - maxConcurrentStreams
+                                type: object
+                            type: object
+                          httpProtocolOptions:
+                            description: HttpProtocolOptions are the options used
+                              when HTTP/1.1 is negotiated.
+                            properties:
+                              enableTrailers:
+                                description: |-
+                                  EnableTrailers proxies the HTTP/1 trailers, which are dropped otherwise. Envoy only sends trailers when it chunk
+                                  encodes the message, which happens when all of these hold:
+                                  - the request is HTTP/1.1
+                                  - the request is neither a HEAD request nor an HTTP upgrade
+                                  - the message is not the response to a HEAD request
+                                  - the message has no content-length header
+                                type: boolean
+                              sendFullyQualifiedURL:
+                                description: |-
+                                  SendFullyQualifiedUrl puts the scheme (inferred when missing) and the host (host or `:authority` header) before the
+                                  path in the request line sent to the backend. By default only the path is sent.
+                                type: boolean
+                            type: object
+                        type: object
+                      commonHTTPProtocolOptions:
+                        description: CommonHttpProtocolOptions apply to the connections
+                          to the backend, whatever their HTTP version.
+                        properties:
+                          idleTimeoutMilliseconds:
+                            description: |-
+                              IdleTimeout closes a connection after this time without any active request. HTTP/2 PINGs don't keep the connection
+                              alive. It is 1 hour when unset, and 0 disables it, which may leak connections whose TCP FIN was lost. An HTTP/2
+                              client connection is drained before it is closed.
+                            format: int32
+                            type: integer
+                          maxConnectionDurationMilliseconds:
+                            description: |-
+                              MaxConnectionDuration closes a connection this long after it was established. A connection without active stream
+                              is closed at once, a client connection with active streams is drained first and closed at the end of the drain.
+                              There is no maximum when unset.
+                            format: int32
+                            type: integer
+                          maxHeadersCount:
+                            description: |-
+                              MaxHeadersCount is the maximum number of headers of a request, 100 when unset. A request with more headers is
+                              answered 431 in HTTP/1 and its stream is reset in HTTP/2.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                          maxRequestsPerConnection:
+                            description: |-
+                              MaxRequestsPerConnection is the maximum number of requests sent over one connection, no limit when unset. 1
+                              disables keep alive. In HTTP/2 and HTTP/3 the limit is approximate because streams run concurrently.
+                            format: int32
+                            minimum: 0
+                            type: integer
+                          maxStreamDurationMilliseconds:
+                            description: |-
+                              MaxStreamDuration resets a stream this long after it started, whatever the other timeouts. There is no maximum
+                              when unset.
+                            format: int32
+                            type: integer
+                        required:
+                        - maxHeadersCount
+                        type: object
+                      explicitHTTPConfig:
+                        description: ExplicitHttpConfig always uses the single protocol
+                          it sets.
+                        properties:
+                          http2ProtocolOptions:
+                            description: Http2ProtocolOptions selects HTTP/2.
+                            properties:
+                              allowConnect:
+                                description: AllowConnect allows proxying websockets
+                                  and other upgrades over HTTP/2 CONNECT.
+                                type: boolean
+                              connectionKeepalive:
+                                description: ConnectionKeepalive sends PING frames
+                                  to check the connection, and closes it when the
+                                  peer doesn't answer in time.
+                                properties:
+                                  connectionIdleIntervalMilliseconds:
+                                    description: |-
+                                      ConnectionIdleInterval would send a PING before a new stream on a connection idle for this long. The starling
+                                      agent doesn't pass it to envoy, so it has no effect.
+                                    format: int32
+                                    minimum: 1
+                                    type: integer
+                                  intervalMilliseconds:
+                                    description: Interval is the period of the PING
+                                      frames, at least 1ms. No periodic PING is sent
+                                      when unset.
+                                    format: int32
+                                    minimum: 1
+                                    type: integer
+                                  timeoutMilliseconds:
+                                    description: |-
+                                      Timeout is how long to wait for the answer to a PING before closing the connection, at least 1ms. Any frame
+                                      received on the connection extends the wait, so head-of-line blocking doesn't close a healthy connection.
+                                    format: int32
+                                    minimum: 1
+                                    type: integer
+                                required:
+                                - connectionIdleIntervalMilliseconds
+                                - intervalMilliseconds
+                                - timeoutMilliseconds
+                                type: object
+                              hpackTableSize:
+                                description: |-
+                                  HpackTableSize is the maximum size in bytes of the HPACK dynamic table the encoder may use
+                                  (https://httpwg.org/specs/rfc7541.html#rfc.section.4.2), 4096 when unset. 0 disables header compression.
+                                format: int32
+                                minimum: 0
+                                type: integer
+                              initialConnectionWindowSize:
+                                description: |-
+                                  InitialConnectionWindowSize is the initial flow control window of a connection in bytes, from 65535 to 2147483647.
+                                  The starling agent uses 1048576 when unset.
+                                format: int32
+                                maximum: 2147483647
+                                minimum: 65535
+                                type: integer
+                              initialStreamWindowSize:
+                                description: |-
+                                  InitialStreamWindowSize is the initial flow control window of a stream in bytes
+                                  (https://httpwg.org/specs/rfc7540.html#rfc.section.6.9.2), from 65535 to 2147483647. The starling agent uses 65536
+                                  when unset. It also bounds the bytes envoy buffers per stream in its HTTP/2 codec.
+                                format: int32
+                                maximum: 2147483647
+                                minimum: 65535
+                                type: integer
+                              maxConcurrentStreams:
+                                description: |-
+                                  MaxConcurrentStreams is the maximum number of concurrent streams of one connection
+                                  (https://httpwg.org/specs/rfc7540.html#rfc.section.5.1.2), from 1 to 2147483647. When unset it is 1000000 for the
+                                  client connections of an http virtual server, and 2147483647 toward a backend.
+
+                                  Toward a backend it also limits the streams envoy opens on one connection. Over the limit, envoy queues the
+                                  requests or opens more connections. Envoy lowers it on a connection when the backend announces a lower limit.
+                                format: int32
+                                maximum: 2147483647
+                                minimum: 1
+                                type: integer
+                              maxConsecutiveInboundFramesWithEmptyPayload:
+                                description: |-
+                                  MaxConsecutiveInboundFramesWithEmptyPayload is the maximum number of consecutive HEADERS, CONTINUATION and DATA
+                                  frames received with an empty payload and no end of stream flag, 1 when unset. Over it, envoy closes the connection
+                                  as a flood and counts it in `http2.inbound_empty_frames_flood`. 0 closes the connection on the first such frame.
+                                format: int32
+                                minimum: 0
+                                type: integer
+                              maxInboundPriorityFramesPerStream:
+                                description: |-
+                                  MaxInboundPriorityFramesPerStream limits the PRIORITY frames received, 100 when unset. Envoy closes the connection
+                                  as a flood, counted in `http2.inbound_priority_frames_flood`, when the PRIORITY frames received over its lifetime
+                                  exceed `max_inbound_priority_frames_per_stream * (1 + opened_streams)`. On a client connection `opened_streams`
+                                  grows when envoy receives the complete response headers from the backend. On a connection to a backend it grows
+                                  when envoy sends the HEADERS frame of a new stream.
+                                format: int32
+                                minimum: 0
+                                type: integer
+                              maxInboundWindowUpdateFramesPerDataFrameSent:
+                                description: |-
+                                  MaxInboundWindowUpdateFramesPerDataFrameSent limits the WINDOW_UPDATE frames received, 10 when unset. Envoy closes
+                                  the connection as a flood, counted in `http2.inbound_window_update_frames_flood`, when the WINDOW_UPDATE frames
+                                  received over its lifetime exceed
+                                  `5 + 2 * (opened_streams + max_inbound_window_update_frames_per_data_frame_sent * outbound_data_frames)`, with
+                                  `opened_streams` counted as for `max_inbound_priority_frames_per_stream`. 1 is enough for peers with basic flow
+                                  control, peers estimating the available bandwidth need at least 2.
+                                format: int32
+                                minimum: 1
+                                type: integer
+                              maxOutboundControlFrames:
+                                description: |-
+                                  MaxOutboundControlFrames is the maximum number of PING, SETTINGS and RST_STREAM frames waiting to be written to the
+                                  socket, 1000 when unset. Over it, envoy closes the connection as a flood and counts it in
+                                  `http2.outbound_control_flood`.
+                                format: int32
+                                minimum: 1
+                                type: integer
+                              maxOutboundFrames:
+                                description: |-
+                                  MaxOutboundFrames is the maximum number of frames of any type waiting to be written to the socket, 10000 when
+                                  unset. Over it, envoy closes the connection as a flood and counts it in `http2.outbound_flood`.
+                                format: int32
+                                minimum: 1
+                                type: integer
+                            required:
+                            - initialConnectionWindowSize
+                            - initialStreamWindowSize
+                            - maxConcurrentStreams
+                            - maxInboundWindowUpdateFramesPerDataFrameSent
+                            - maxOutboundControlFrames
+                            - maxOutboundFrames
+                            type: object
+                          http3ProtocolOptions:
+                            description: |-
+                              Http3ProtocolOptions selects HTTP/3 (QUIC). The starling agent sets no QUIC transport socket on the envoy
+                              cluster of a backend.
+                            properties:
+                              allowExtendedConnect:
+                                description: |-
+                                  AllowExtendedConnect allows proxying websockets and other upgrades over HTTP/3 CONNECT, with the headers of the
+                                  HTTP/2 extended CONNECT (RFC 8441) and the settings proposed for HTTP/3
+                                  (https://datatracker.ietf.org/doc/draft-ietf-httpbis-h3-websockets/), which is not an RFC yet.
+                                type: boolean
+                              overrideStreamErrorOnInvalidHTTPMessage:
+                                description: |-
+                                  OverrideStreamErrorOnInvalidHttpMessage only terminates the offending stream on an invalid HEADERS frame when
+                                  true. When false or unset, the whole connection is terminated.
+                                type: boolean
+                              quicProtocolOptions:
+                                description: QuicProtocolOptions are the QUIC options
+                                  of the connection.
+                                properties:
+                                  connectionKeepalive:
+                                    description: |-
+                                      ConnectionKeepalive probes the peer to get traffic back from it and push back the idle timeout of the connection.
+                                      When unset, a client connection sends a PING every 15s and a server connection doesn't probe.
+                                    properties:
+                                      initialIntervalMilliseconds:
+                                        description: |-
+                                          InitialInterval is the interval of the first probes, 0 or at least 1s. Each next probe waits exponentially longer,
+                                          up to `max_interval`. It should be shorter than the idle timeout of the connection and than `max_interval`. When
+                                          unset or 0, a server connection doesn't probe, and a client connection probes at `max_interval` (or the QUICHE
+                                          default) unless `max_interval` is 0.
+                                        format: int32
+                                        type: integer
+                                        x-kubernetes-validations:
+                                        - message: must be <= 0 or >= 1000
+                                          rule: self <= 0 || self >= 1000
+                                      maxIntervalMilliseconds:
+                                        description: |-
+                                          MaxInterval is the longest interval between two probes (PING or PATH_RESPONSE), 0 or at least 1s. It should be
+                                          shorter than the idle timeout of the connection. A client connection starts probing at this interval when
+                                          `initial_interval` is unset or 0. 0 disables probing, and the QUICHE default interval is used when unset.
+                                        format: int32
+                                        type: integer
+                                        x-kubernetes-validations:
+                                        - message: must be <= 0 or >= 1000
+                                          rule: self <= 0 || self >= 1000
+                                    type: object
+                                  initialConnectionWindowSize:
+                                    description: |-
+                                      InitialConnectionWindowSize is the initial flow control receive window of a connection in bytes, from 1 to
+                                      25165824, 65536 when unset.
+                                    format: int32
+                                    maximum: 25165824
+                                    minimum: 1
+                                    type: integer
+                                  initialStreamWindowSize:
+                                    description: |-
+                                      InitialStreamWindowSize is the initial flow control receive window of a stream in bytes
+                                      (https://tools.ietf.org/html/draft-ietf-quic-transport-34#section-4.1), from 1 to 16777216, 65536 when unset. It
+                                      also bounds the bytes envoy buffers per stream in the QUIC stream buffers.
+                                    format: int32
+                                    maximum: 16777216
+                                    minimum: 1
+                                    type: integer
+                                  maxConcurrentStreams:
+                                    description: MaxConcurrentStreams is the maximum
+                                      number of streams the client can negotiate per
+                                      connection, 100 when unset.
+                                    format: int32
+                                    minimum: 1
+                                    type: integer
+                                  numTimeoutsToTriggerPortMigration:
+                                    description: |-
+                                      NumTimeoutsToTriggerPortMigration is the number of QUIC path degrading timeouts (such as PTO) before a client
+                                      connection migrates to another port, from 0 to 5, 1 when unset. 0 disables the migration. It has no effect on
+                                      server connections.
+                                    format: int32
+                                    maximum: 5
+                                    minimum: 0
+                                    type: integer
+                                required:
+                                - initialConnectionWindowSize
+                                - initialStreamWindowSize
+                                - maxConcurrentStreams
+                                type: object
+                            type: object
+                          httpProtocolOptions:
+                            description: HttpProtocolOptions selects HTTP/1.1.
+                            properties:
+                              enableTrailers:
+                                description: |-
+                                  EnableTrailers proxies the HTTP/1 trailers, which are dropped otherwise. Envoy only sends trailers when it chunk
+                                  encodes the message, which happens when all of these hold:
+                                  - the request is HTTP/1.1
+                                  - the request is neither a HEAD request nor an HTTP upgrade
+                                  - the message is not the response to a HEAD request
+                                  - the message has no content-length header
+                                type: boolean
+                              sendFullyQualifiedURL:
+                                description: |-
+                                  SendFullyQualifiedUrl puts the scheme (inferred when missing) and the host (host or `:authority` header) before the
+                                  path in the request line sent to the backend. By default only the path is sent.
+                                type: boolean
+                            type: object
+                        type: object
+                        x-kubernetes-validations:
+                        - message: exactly one of httpProtocolOptions, http2ProtocolOptions,
+                            http3ProtocolOptions must be set
+                          rule: '[has(self.httpProtocolOptions), has(self.http2ProtocolOptions),
+                            has(self.http3ProtocolOptions)].exists_one(x, x)'
+                      upstreamHTTPProtocolOptions:
+                        description: |-
+                          UpstreamHttpProtocolOptions set SNI and certificate validation from the request for the connections to the
+                          backend.
+                        properties:
+                          autoSANValidation:
+                            description: |-
+                              AutoSanValidation checks that the certificate presented by the backend on each new connection matches the host
+                              (`:authority`) header of the request, or the header named by `override_auto_sni_header`. It is meant to be used
+                              with `auto_sni`.
+                            type: boolean
+                          autoSNI:
+                            description: |-
+                              AutoSni sets the SNI of each new connection to the backend from the host (`:authority`) header of the request, or
+                              from the header named by `override_auto_sni_header`.
+                            type: boolean
+                          overrideAutoSNIHeader:
+                            description: |-
+                              OverrideAutoSniHeader is the name of a request header used instead of the host header by `auto_sni` and
+                              `auto_san_validation`. When the header is missing or empty, the host header is used. It has no effect when neither
+                              of them is set.
+                            maxLength: 256
+                            pattern: ^:?[0-9a-zA-Z!#$%&'*+.\-^_|~\x60]+$
+                            type: string
+                        type: object
+                      useDownstreamProtocolConfig:
+                        description: UseDownstreamProtocolConfig uses the protocol
+                          of the client connection.
+                        properties:
+                          http2ProtocolOptions:
+                            description: Http2ProtocolOptions are the options used
+                              when the client speaks HTTP/2.
+                            properties:
+                              allowConnect:
+                                description: AllowConnect allows proxying websockets
+                                  and other upgrades over HTTP/2 CONNECT.
+                                type: boolean
+                              connectionKeepalive:
+                                description: ConnectionKeepalive sends PING frames
+                                  to check the connection, and closes it when the
+                                  peer doesn't answer in time.
+                                properties:
+                                  connectionIdleIntervalMilliseconds:
+                                    description: |-
+                                      ConnectionIdleInterval would send a PING before a new stream on a connection idle for this long. The starling
+                                      agent doesn't pass it to envoy, so it has no effect.
+                                    format: int32
+                                    minimum: 1
+                                    type: integer
+                                  intervalMilliseconds:
+                                    description: Interval is the period of the PING
+                                      frames, at least 1ms. No periodic PING is sent
+                                      when unset.
+                                    format: int32
+                                    minimum: 1
+                                    type: integer
+                                  timeoutMilliseconds:
+                                    description: |-
+                                      Timeout is how long to wait for the answer to a PING before closing the connection, at least 1ms. Any frame
+                                      received on the connection extends the wait, so head-of-line blocking doesn't close a healthy connection.
+                                    format: int32
+                                    minimum: 1
+                                    type: integer
+                                required:
+                                - connectionIdleIntervalMilliseconds
+                                - intervalMilliseconds
+                                - timeoutMilliseconds
+                                type: object
+                              hpackTableSize:
+                                description: |-
+                                  HpackTableSize is the maximum size in bytes of the HPACK dynamic table the encoder may use
+                                  (https://httpwg.org/specs/rfc7541.html#rfc.section.4.2), 4096 when unset. 0 disables header compression.
+                                format: int32
+                                minimum: 0
+                                type: integer
+                              initialConnectionWindowSize:
+                                description: |-
+                                  InitialConnectionWindowSize is the initial flow control window of a connection in bytes, from 65535 to 2147483647.
+                                  The starling agent uses 1048576 when unset.
+                                format: int32
+                                maximum: 2147483647
+                                minimum: 65535
+                                type: integer
+                              initialStreamWindowSize:
+                                description: |-
+                                  InitialStreamWindowSize is the initial flow control window of a stream in bytes
+                                  (https://httpwg.org/specs/rfc7540.html#rfc.section.6.9.2), from 65535 to 2147483647. The starling agent uses 65536
+                                  when unset. It also bounds the bytes envoy buffers per stream in its HTTP/2 codec.
+                                format: int32
+                                maximum: 2147483647
+                                minimum: 65535
+                                type: integer
+                              maxConcurrentStreams:
+                                description: |-
+                                  MaxConcurrentStreams is the maximum number of concurrent streams of one connection
+                                  (https://httpwg.org/specs/rfc7540.html#rfc.section.5.1.2), from 1 to 2147483647. When unset it is 1000000 for the
+                                  client connections of an http virtual server, and 2147483647 toward a backend.
+
+                                  Toward a backend it also limits the streams envoy opens on one connection. Over the limit, envoy queues the
+                                  requests or opens more connections. Envoy lowers it on a connection when the backend announces a lower limit.
+                                format: int32
+                                maximum: 2147483647
+                                minimum: 1
+                                type: integer
+                              maxConsecutiveInboundFramesWithEmptyPayload:
+                                description: |-
+                                  MaxConsecutiveInboundFramesWithEmptyPayload is the maximum number of consecutive HEADERS, CONTINUATION and DATA
+                                  frames received with an empty payload and no end of stream flag, 1 when unset. Over it, envoy closes the connection
+                                  as a flood and counts it in `http2.inbound_empty_frames_flood`. 0 closes the connection on the first such frame.
+                                format: int32
+                                minimum: 0
+                                type: integer
+                              maxInboundPriorityFramesPerStream:
+                                description: |-
+                                  MaxInboundPriorityFramesPerStream limits the PRIORITY frames received, 100 when unset. Envoy closes the connection
+                                  as a flood, counted in `http2.inbound_priority_frames_flood`, when the PRIORITY frames received over its lifetime
+                                  exceed `max_inbound_priority_frames_per_stream * (1 + opened_streams)`. On a client connection `opened_streams`
+                                  grows when envoy receives the complete response headers from the backend. On a connection to a backend it grows
+                                  when envoy sends the HEADERS frame of a new stream.
+                                format: int32
+                                minimum: 0
+                                type: integer
+                              maxInboundWindowUpdateFramesPerDataFrameSent:
+                                description: |-
+                                  MaxInboundWindowUpdateFramesPerDataFrameSent limits the WINDOW_UPDATE frames received, 10 when unset. Envoy closes
+                                  the connection as a flood, counted in `http2.inbound_window_update_frames_flood`, when the WINDOW_UPDATE frames
+                                  received over its lifetime exceed
+                                  `5 + 2 * (opened_streams + max_inbound_window_update_frames_per_data_frame_sent * outbound_data_frames)`, with
+                                  `opened_streams` counted as for `max_inbound_priority_frames_per_stream`. 1 is enough for peers with basic flow
+                                  control, peers estimating the available bandwidth need at least 2.
+                                format: int32
+                                minimum: 1
+                                type: integer
+                              maxOutboundControlFrames:
+                                description: |-
+                                  MaxOutboundControlFrames is the maximum number of PING, SETTINGS and RST_STREAM frames waiting to be written to the
+                                  socket, 1000 when unset. Over it, envoy closes the connection as a flood and counts it in
+                                  `http2.outbound_control_flood`.
+                                format: int32
+                                minimum: 1
+                                type: integer
+                              maxOutboundFrames:
+                                description: |-
+                                  MaxOutboundFrames is the maximum number of frames of any type waiting to be written to the socket, 10000 when
+                                  unset. Over it, envoy closes the connection as a flood and counts it in `http2.outbound_flood`.
+                                format: int32
+                                minimum: 1
+                                type: integer
+                            required:
+                            - initialConnectionWindowSize
+                            - initialStreamWindowSize
+                            - maxConcurrentStreams
+                            - maxInboundWindowUpdateFramesPerDataFrameSent
+                            - maxOutboundControlFrames
+                            - maxOutboundFrames
+                            type: object
+                          http3ProtocolOptions:
+                            description: |-
+                              Http3ProtocolOptions are the options used when the client speaks HTTP/3. The listeners of the starling agent
+                              accept no HTTP/3 connection.
+                            properties:
+                              allowExtendedConnect:
+                                description: |-
+                                  AllowExtendedConnect allows proxying websockets and other upgrades over HTTP/3 CONNECT, with the headers of the
+                                  HTTP/2 extended CONNECT (RFC 8441) and the settings proposed for HTTP/3
+                                  (https://datatracker.ietf.org/doc/draft-ietf-httpbis-h3-websockets/), which is not an RFC yet.
+                                type: boolean
+                              overrideStreamErrorOnInvalidHTTPMessage:
+                                description: |-
+                                  OverrideStreamErrorOnInvalidHttpMessage only terminates the offending stream on an invalid HEADERS frame when
+                                  true. When false or unset, the whole connection is terminated.
+                                type: boolean
+                              quicProtocolOptions:
+                                description: QuicProtocolOptions are the QUIC options
+                                  of the connection.
+                                properties:
+                                  connectionKeepalive:
+                                    description: |-
+                                      ConnectionKeepalive probes the peer to get traffic back from it and push back the idle timeout of the connection.
+                                      When unset, a client connection sends a PING every 15s and a server connection doesn't probe.
+                                    properties:
+                                      initialIntervalMilliseconds:
+                                        description: |-
+                                          InitialInterval is the interval of the first probes, 0 or at least 1s. Each next probe waits exponentially longer,
+                                          up to `max_interval`. It should be shorter than the idle timeout of the connection and than `max_interval`. When
+                                          unset or 0, a server connection doesn't probe, and a client connection probes at `max_interval` (or the QUICHE
+                                          default) unless `max_interval` is 0.
+                                        format: int32
+                                        type: integer
+                                        x-kubernetes-validations:
+                                        - message: must be <= 0 or >= 1000
+                                          rule: self <= 0 || self >= 1000
+                                      maxIntervalMilliseconds:
+                                        description: |-
+                                          MaxInterval is the longest interval between two probes (PING or PATH_RESPONSE), 0 or at least 1s. It should be
+                                          shorter than the idle timeout of the connection. A client connection starts probing at this interval when
+                                          `initial_interval` is unset or 0. 0 disables probing, and the QUICHE default interval is used when unset.
+                                        format: int32
+                                        type: integer
+                                        x-kubernetes-validations:
+                                        - message: must be <= 0 or >= 1000
+                                          rule: self <= 0 || self >= 1000
+                                    type: object
+                                  initialConnectionWindowSize:
+                                    description: |-
+                                      InitialConnectionWindowSize is the initial flow control receive window of a connection in bytes, from 1 to
+                                      25165824, 65536 when unset.
+                                    format: int32
+                                    maximum: 25165824
+                                    minimum: 1
+                                    type: integer
+                                  initialStreamWindowSize:
+                                    description: |-
+                                      InitialStreamWindowSize is the initial flow control receive window of a stream in bytes
+                                      (https://tools.ietf.org/html/draft-ietf-quic-transport-34#section-4.1), from 1 to 16777216, 65536 when unset. It
+                                      also bounds the bytes envoy buffers per stream in the QUIC stream buffers.
+                                    format: int32
+                                    maximum: 16777216
+                                    minimum: 1
+                                    type: integer
+                                  maxConcurrentStreams:
+                                    description: MaxConcurrentStreams is the maximum
+                                      number of streams the client can negotiate per
+                                      connection, 100 when unset.
+                                    format: int32
+                                    minimum: 1
+                                    type: integer
+                                  numTimeoutsToTriggerPortMigration:
+                                    description: |-
+                                      NumTimeoutsToTriggerPortMigration is the number of QUIC path degrading timeouts (such as PTO) before a client
+                                      connection migrates to another port, from 0 to 5, 1 when unset. 0 disables the migration. It has no effect on
+                                      server connections.
+                                    format: int32
+                                    maximum: 5
+                                    minimum: 0
+                                    type: integer
+                                required:
+                                - initialConnectionWindowSize
+                                - initialStreamWindowSize
+                                - maxConcurrentStreams
+                                type: object
+                            type: object
+                          httpProtocolOptions:
+                            description: HttpProtocolOptions are the options used
+                              when the client speaks HTTP/1.
+                            properties:
+                              enableTrailers:
+                                description: |-
+                                  EnableTrailers proxies the HTTP/1 trailers, which are dropped otherwise. Envoy only sends trailers when it chunk
+                                  encodes the message, which happens when all of these hold:
+                                  - the request is HTTP/1.1
+                                  - the request is neither a HEAD request nor an HTTP upgrade
+                                  - the message is not the response to a HEAD request
+                                  - the message has no content-length header
+                                type: boolean
+                              sendFullyQualifiedURL:
+                                description: |-
+                                  SendFullyQualifiedUrl puts the scheme (inferred when missing) and the host (host or `:authority` header) before the
+                                  path in the request line sent to the backend. By default only the path is sent.
+                                type: boolean
+                            type: object
+                        type: object
+                    type: object
+                    x-kubernetes-validations:
+                    - message: exactly one of explicitHTTPConfig, useDownstreamProtocolConfig,
+                        autoConfig must be set
+                      rule: '[has(self.explicitHTTPConfig), has(self.useDownstreamProtocolConfig),
+                        has(self.autoConfig)].exists_one(x, x)'
+                type: object
+              ipAddrGroup:
+                description: Fixed list of endpoints, never refreshed.
+                properties:
+                  ipAddresses:
+                    description: IP addresses and ports, at least one.
+                    items:
+                      description: |-
+                        IPAddr represents an IP address and port.
+                        Optionally a weight can be set for weighted load balancing policy.
+                      properties:
+                        ip:
+                          description: IPv4 or IPv6 address.
+                          maxLength: 45
+                          type: string
+                          x-kubernetes-validations:
+                          - message: must be an IP address
+                            rule: isIP(self)
+                        loadBalancingWeight:
+                          description: |-
+                            Weight of the endpoint for weighted load balancing policies. 0 (default) gives the endpoint the default weight
+                            of the agent, it never stops the traffic to the endpoint.
+                          format: int32
+                          minimum: 0
+                          type: integer
+                        port:
+                          description: Port number.
+                          exclusiveMinimum: true
+                          format: int32
+                          maximum: 65535
+                          minimum: 0
+                          type: integer
+                      required:
+                      - ip
+                      - port
+                      type: object
+                    maxItems: 1000
+                    minItems: 1
+                    type: array
+                    x-kubernetes-list-type: atomic
+                required:
+                - ipAddresses
+                type: object
+              lbPolicy:
+                description: The load balancing policy. Defaults to ROUND_ROBIN.
+                enum:
+                - RoundRobin
+                - WeightedRoundRobin
+                - LeastRequest
+                - WeightedLeastRequest
+                - RingHash
+                - Maglev
+                type: string
+              proxyProtocolVersion:
+                description: |-
+                  ProxyProtocolVersion is the version of the proxy protocol header sent when enable_proxy_protocol is set.
+                  Defaults to V1.
+                enum:
+                - V1
+                - V2
+                type: string
+              refreshRateMilliseconds:
+                description: |-
+                  Interval between two discoveries of the endpoints of a DNS or EDS backend, also waited before retrying a failed
+                  discovery. Ignored by ip_addr_group backends. Defaults to 5s and must be more than 1ms.
+                exclusiveMinimum: true
+                format: int32
+                minimum: 1
+                type: integer
+              sni:
+                description: SNI sent when connecting to the endpoints with TLS. TLS
+                  health checks send it too.
+                maxLength: 253
+                type: string
+              typedOptions:
+                description: |-
+                  Extension point for specific options linked to the LB implementation.
+                  valid extensions are:
+                  - flock.extensions.backend.starling_options.v1.BackendOptions
+                  - flock.extensions.backend.f5_options.v1.BackendOptions
+                properties:
+                  f5:
+                    description: |-
+                      BackendOptions holds the F5 agent options of a backend, packed in the `typed_options` field of
+                      `flock.api.config.backend.v1.Backend`.
+                    properties:
+                      lbMode:
+                        description: |-
+                          Load balancing mode of the BIG-IP pools of the backend, an AS3 `loadBalancingMode` value. It replaces the mode the
+                          agent maps from lb_policy.
+                        enum:
+                        - dynamic-ratio-member
+                        - dynamic-ratio-node
+                        - fastest-app-response
+                        - fastest-node
+                        - least-connections-member
+                        - least-connections-node
+                        - least-sessions
+                        - observed-member
+                        - observed-node
+                        - predictive-member
+                        - predictive-node
+                        - ratio-least-connections-member
+                        - ratio-least-connections-node
+                        - ratio-member
+                        - ratio-node
+                        - ratio-session
+                        - round-robin
+                        - weighted-least-connections-member
+                        - weighted-least-connections-node
+                        type: string
+                      monitors:
+                        description: |-
+                          Monitors replacing the one the agent builds from the health check of the backend, given by full path of existing
+                          BIG-IP monitors (for example `/Common/my_monitor`). The agent never creates nor changes them.
+                        items:
+                          maxLength: 255
+                          pattern: ^/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+$
+                          type: string
+                        maxItems: 64
+                        type: array
+                        x-kubernetes-list-type: atomic
+                      slowRampTimeMilliseconds:
+                        description: Time during which a member coming back up receives
+                          a growing share of the traffic. Rounded up to seconds.
+                        format: int32
+                        type: integer
+                    type: object
+                  starling:
+                    description: |-
+                      BackendOptions holds the starling agent options of a backend, packed in the `typed_options` field of
+                      `flock.api.config.backend.v1.Backend`. It has no field yet.
+                    type: object
+                type: object
+                x-kubernetes-validations:
+                - message: at most one of f5, starling can be set
+                  rule: '[has(self.f5), has(self.starling)].filter(x, x).size() <=
+                    1'
+            required:
+            - healthCheck
+            type: object
+            x-kubernetes-validations:
+            - message: exactly one of dns, ipAddrGroup, eds must be set
+              rule: '[has(self.dns), has(self.ipAddrGroup), has(self.eds)].exists_one(x,
+                x)'
+          status:
+            description: status defines the observed state of Backend
+            properties:
+              conditions:
+                description: conditions tell whether flock holds the spec of the object
+                  (Ready) and why not when it doesn't.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                maxItems: 8
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              observedGeneration:
+                description: observedGeneration is the generation of the spec last
+                  written to flock.
+                format: int64
+                minimum: 0
+                type: integer
+              uuid:
+                description: uuid of the flock resource made from this object, empty
+                  until it is created.
+                maxLength: 36
+                type: string
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

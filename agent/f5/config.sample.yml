@@ -1,0 +1,36 @@
+# Configuration of the F5 agent (flock agent f5 start -c config.yml).
+# Run one F5 agent per flock instance: two agents on one instance would post the same partitions.
+# The name of the agent is the CN of tls.cert_file.
+controller:
+  addr: controller.example:443
+  server_name: controller.example
+  instance_uuid: 1b4e28ba-2fa1-11d2-883f-0016d3cca427
+tls:
+  cert_file: /etc/flock/agent.crt
+  key_file: /etc/flock/agent.key
+  ca_file: /etc/flock/ca.crt
+server:
+  listen_host: 10.0.0.5
+  listen_port: 18000
+log:
+  level: info
+# the BIG-IP resolves DNS backends itself with its system DNS servers, set them on the devices
+bigip:
+  # management urls of the devices of the HA pair (or a single device)
+  urls: [https://bigip-a.example:443, https://bigip-b.example:443]
+  username: flock
+  # or the FLOCK_BIGIP_PASSWORD env var, the password is never written here
+  # password_file: /etc/flock/bigip-password
+  login_provider: tmos
+  # ca_file: /etc/flock/bigip-ca.crt
+  insecure_skip_verify: false
+  # partition of the VIPs without the metadata key below
+  default_partition: flock
+  partition_metadata_key: agent.f5.partition
+  debounce: 1s
+  max_debounce: 10s
+  max_incomplete: 1m
+  resync_interval: 5m
+  garbage_after_start: 10m
+  request_timeout: 2m
+  dry_run: false

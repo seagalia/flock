@@ -1,0 +1,28 @@
+@if (state.loadError()) {
+  <p class="banner" role="alert">
+    <mat-icon>error</mat-icon>
+    The controller can't be read, names already used there are not checked: {{ state.loadError() }}
+  </p>
+}
+@if (state.mode()) {
+  <mat-stepper
+    linear
+    class="stepper"
+    aria-label="Expose a service"
+    [selectedIndex]="state.step()"
+    (selectionChange)="state.step.set($event.selectedIndex)"
+  >
+    <mat-step label="VIP" [completed]="state.vipDone()">
+      <ng-template matStepContent><flock-vip-step /></ng-template>
+    </mat-step>
+    <mat-step label="Virtual server" [completed]="state.vsDone()">
+      <ng-template matStepContent><flock-vs-step /></ng-template>
+    </mat-step>
+    <mat-step label="Backend" [completed]="state.backendDone()">
+      <ng-template matStepContent><flock-backend-step /></ng-template>
+    </mat-step>
+    <mat-step label="Review">
+      <ng-template matStepContent><flock-review-step /></ng-template>
+    </mat-step>
+  </mat-stepper>
+}

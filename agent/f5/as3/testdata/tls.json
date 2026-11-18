@@ -1,0 +1,112 @@
+{
+  "action": "dry-run",
+  "class": "AS3",
+  "declaration": {
+    "class": "ADC",
+    "flock": {
+      "class": "Tenant",
+      "remark": "flock instance inst-1",
+      "vip_11111111_1111_1111_1111_111111111111": {
+        "cert_44444444_4444_4444_4444_444444444444": {
+          "class": "Certificate",
+          "remark": "cert-4444",
+          "certificate": "CHAIN",
+          "privateKey": "KEY"
+        },
+        "class": "Application",
+        "irule_proxysend_77777777_7777_7777_7777_777777777777": {
+          "class": "iRule",
+          "iRule": "when SERVER_CONNECTED {\n    if { [LB::server pool] eq \"/flock/vip_11111111_1111_1111_1111_111111111111/pool_77777777_7777_7777_7777_777777777777\" } {\n        if { [IP::version] eq \"6\" } {\n            set flock_pp_proto \"TCP6\"\n        } else {\n            set flock_pp_proto \"TCP4\"\n        }\n        TCP::respond \"PROXY $flock_pp_proto [IP::client_addr] [IP::local_addr clientside] [TCP::client_port] [TCP::local_port clientside]\\r\\n\"\n    }\n}\n"
+        },
+        "irule_sni_22222222_2222_2222_2222_222222222222": {
+          "class": "iRule",
+          "iRule": "when CLIENT_ACCEPTED {\n    SSL::disable\n    TCP::collect\n}\nwhen CLIENT_DATA {\n    if { ![info exists flock_pp_done] } {\n        set flock_pp_len 0\n        if { [TCP::payload 6] eq \"PROXY \" } {\n            set flock_pp_end [string first \"\\r\\n\" [TCP::payload]]\n            if { $flock_pp_end < 0 } {\n                TCP::collect\n                return\n            }\n            set flock_pp_len [expr {$flock_pp_end + 2}]\n        } elseif { [TCP::payload length] < 16 } {\n            TCP::collect\n            return\n        } else {\n            binary scan [TCP::payload 16] H24ccS flock_pp_sig flock_pp_ver flock_pp_fam flock_pp_addrlen\n            if { $flock_pp_sig eq \"0d0a0d0a000d0a515549540a\" } {\n                set flock_pp_len [expr {16 + ($flock_pp_addrlen & 0xffff)}]\n                if { [TCP::payload length] < $flock_pp_len } {\n                    TCP::collect\n                    return\n                }\n            }\n        }\n        if { $flock_pp_len == 0 } {\n            reject\n            return\n        }\n        TCP::payload replace 0 $flock_pp_len \"\"\n        set flock_pp_done 1\n    }\n    if { [TCP::payload length] < 5 } {\n        TCP::collect\n        return\n    }\n    binary scan [TCP::payload 5] cSS flock_tls_type flock_tls_version flock_tls_len\n    set flock_tls_len [expr {$flock_tls_len & 0xffff}]\n    set flock_sni \"\"\n    if { $flock_tls_type == 22 } {\n        if { [TCP::payload length] < [expr {$flock_tls_len + 5}] } {\n            TCP::collect\n            return\n        }\n        set flock_hello [TCP::payload [expr {$flock_tls_len + 5}]]\n        set flock_off 43\n        binary scan $flock_hello @${flock_off}c flock_len\n        set flock_off [expr {$flock_off + 1 + ($flock_len & 0xff)}]\n        binary scan $flock_hello @${flock_off}S flock_len\n        set flock_off [expr {$flock_off + 2 + ($flock_len & 0xffff)}]\n        binary scan $flock_hello @${flock_off}c flock_len\n        set flock_off [expr {$flock_off + 1 + ($flock_len & 0xff)}]\n        binary scan $flock_hello @${flock_off}S flock_ext_len\n        set flock_off [expr {$flock_off + 2}]\n        set flock_ext_end [expr {$flock_off + ($flock_ext_len & 0xffff)}]\n        while { $flock_off + 4 <= $flock_ext_end } {\n            binary scan $flock_hello @${flock_off}SS flock_ext_type flock_ext_size\n            set flock_ext_size [expr {$flock_ext_size & 0xffff}]\n            if { ($flock_ext_type & 0xffff) == 0 } {\n                binary scan $flock_hello @[expr {$flock_off + 7}]S flock_name_len\n                set flock_name_start [expr {$flock_off + 9}]\n                set flock_name_end [expr {$flock_name_start + ($flock_name_len & 0xffff) - 1}]\n                set flock_sni [string tolower [string range $flock_hello $flock_name_start $flock_name_end]]\n                break\n            }\n            set flock_off [expr {$flock_off + 4 + $flock_ext_size}]\n        }\n    }\n    if { $flock_sni eq \"a.example.com\" } {\n        SSL::enable\n        pool /flock/vip_11111111_1111_1111_1111_111111111111/pool_33333333_3333_3333_3333_333333333333\n    } elseif { $flock_sni eq \"db.example.com\" } {\n        pool /flock/vip_11111111_1111_1111_1111_111111111111/pool_77777777_7777_7777_7777_777777777777\n    } elseif { [string match \"*.example.com\" $flock_sni] } {\n        SSL::enable\n        pool /flock/vip_11111111_1111_1111_1111_111111111111/pool_33333333_3333_3333_3333_333333333333\n    } else {\n        pool /flock/vip_11111111_1111_1111_1111_111111111111/pool_77777777_7777_7777_7777_777777777777\n    }\n    TCP::release\n}\n"
+        },
+        "mon_33333333_3333_3333_3333_333333333333": {
+          "class": "Monitor",
+          "remark": "backend-3333",
+          "monitorType": "tcp",
+          "interval": 10,
+          "timeout": 12
+        },
+        "mon_77777777_7777_7777_7777_777777777777": {
+          "class": "Monitor",
+          "remark": "backend-7777",
+          "monitorType": "tcp",
+          "interval": 10,
+          "timeout": 12
+        },
+        "pool_33333333_3333_3333_3333_333333333333": {
+          "class": "Pool",
+          "remark": "backend-3333",
+          "loadBalancingMode": "round-robin",
+          "monitors": [
+            {
+              "use": "mon_33333333_3333_3333_3333_333333333333"
+            }
+          ],
+          "members": [
+            {
+              "servicePort": 8080,
+              "serverAddresses": [
+                "10.0.0.10"
+              ],
+              "shareNodes": true
+            }
+          ]
+        },
+        "pool_77777777_7777_7777_7777_777777777777": {
+          "class": "Pool",
+          "remark": "backend-7777",
+          "loadBalancingMode": "round-robin",
+          "monitors": [
+            {
+              "use": "mon_77777777_7777_7777_7777_777777777777"
+            }
+          ],
+          "members": [
+            {
+              "servicePort": 8080,
+              "serverAddresses": [
+                "10.0.0.10"
+              ],
+              "shareNodes": true
+            }
+          ]
+        },
+        "remark": "vip-1111",
+        "tlss_22222222_2222_2222_2222_222222222222": {
+          "class": "TLS_Server",
+          "certificates": [
+            {
+              "certificate": "cert_44444444_4444_4444_4444_444444444444",
+              "matchToSNI": "*.example.com"
+            },
+            {
+              "certificate": "cert_44444444_4444_4444_4444_444444444444",
+              "matchToSNI": "a.example.com"
+            }
+          ]
+        },
+        "vs_22222222_2222_2222_2222_222222222222": {
+          "class": "Service_TCP",
+          "remark": "vs-2222",
+          "virtualAddresses": [
+            "10.99.0.1"
+          ],
+          "virtualPort": 443,
+          "snat": "auto",
+          "persistenceMethods": [],
+          "iRules": [
+            "irule_proxysend_77777777_7777_7777_7777_777777777777",
+            "irule_sni_22222222_2222_2222_2222_222222222222"
+          ],
+          "serverTLS": "tlss_22222222_2222_2222_2222_222222222222"
+        }
+      }
+    },
+    "id": "flock-inst-1",
+    "schemaVersion": "3.50.0"
+  },
+  "persist": true
+}

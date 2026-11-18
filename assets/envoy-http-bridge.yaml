@@ -1,0 +1,61 @@
+staticResources:
+  listeners:
+    - address:
+        socketAddress:
+          address: 0.0.0.0
+          portValue: 8090
+      filterChains:
+        - filters:
+            - name: envoy.filters.network.http_connection_manager
+              typedConfig:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                statPrefix: ingress_http
+                routeConfig:
+                  name: local_route
+                  virtualHosts:
+                    - name: backend
+                      domains:
+                        - "*"
+                      routes:
+                        - match:
+                            prefix: "/"
+                          route:
+                            cluster: grpc
+                            timeout: 60s
+                httpFilters:
+                  - name: envoy.filters.http.grpc_http1_bridge
+                    typedConfig:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.grpc_http1_bridge.v3.Config
+                      upgradeProtobufToGrpc: true
+                  - name: envoy.filters.http.router
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+  clusters:
+    - name: grpc
+      connect_timeout: 0.25s
+      type: STATIC
+      lb_policy: ROUND_ROBIN
+      typedExtensionProtocolOptions:
+        envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+          "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+          explicitHttpConfig:
+            http2ProtocolOptions: { }
+      load_assignment:
+        cluster_name: grpc
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: 127.0.0.1
+                      port_value: 8443
+      transport_socket:
+        name: envoy.transport_sockets.tls
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.UpstreamTlsContext
+          common_tls_context: { }
+admin:
+  address:
+    socketAddress:
+      address: 0.0.0.0
+      portValue: 9901

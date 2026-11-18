@@ -1,0 +1,26 @@
+UUID: ef6856b4-e9dc-4fd8-89ca-d6194a4ab457
+ca: ""
+connect_timeout: null
+enable_proxy_protocol: false
+enable_tls: false
+health_check:
+  alt_port: 0
+  enable_tls: false
+  healthy_threshold: 1
+  interval: 10s
+  no_health_check: {}
+  timeout: 30s
+  unhealthy_interval: 10s
+  unhealthy_threshold: 3
+http_protocol_options: null
+ip_addr_group:
+  ip_addresses:
+  - ip: 192.168.56.20
+    load_balancing_weight: 0
+    port: 80
+lb_policy: ROUND_ROBIN
+metadata: {}
+name: testouille
+proxy_protocol_version: V1
+refresh_rate: 5s
+sni: ""

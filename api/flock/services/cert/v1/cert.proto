@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package flock.services.cert.v1;
+
+import "google/protobuf/empty.proto";
+import "buf/validate/validate.proto";
+import "flock/api/config/cert/v1/cert.proto";
+import "flock/services/core/v1/requests.proto";
+import "flock/services/core/v1/filter.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/services/cert/v1;svccert";
+
+// CreateCertificateRequest is the request message for the CreateCertificate method.
+message CreateCertificateRequest {
+  // certificate is the certificate to create. Its UUID is ignored, the controller generates one.
+  flock.api.config.cert.v1.Certificate certificate = 1 [(buf.validate.field) = {required: true}];
+}
+
+// UpdateCertificateRequest is the request message for the UpdateCertificate method.
+message UpdateCertificateRequest {
+  // UUID is the uuid of the certificate to update.
+  string UUID = 1 [(buf.validate.field).string = {min_len: 1}];
+  // certificate is the new content of the certificate, it replaces the stored one. Its UUID is ignored and set to
+  // UUID.
+  flock.api.config.cert.v1.Certificate certificate = 2 [(buf.validate.field) = {required: true}];
+}
+
+// CertificateResponse is the response message of the Certificate methods returning one certificate.
+message CertificateResponse {
+  // certificate is the certificate as stored. ReadCertificate leaves its private_key empty, CreateCertificate and
+  // UpdateCertificate send back the one given.
+  flock.api.config.cert.v1.Certificate certificate = 1 [(buf.validate.field) = {required: true}];
+}
+
+// ListCertificateRequest is the request message for the ListCertificate method.
+message ListCertificateRequest {
+  // limit is the maximum number of certificates to return, 50 when 0.
+  int32 limit = 1 [(buf.validate.field).int32 = {gte: 0, lte: 100}];
+  // offset is the number of certificates to skip before the first one returned, for paging.
+  int32 offset = 2 [(buf.validate.field).int32 = {gte: 0}];
+  // filters are the filters the certificates must match, see ListFilter.
+  repeated core.v1.ListFilter filters = 3;
+}
+
+// ListCertificateResponse is the response message for the ListCertificate method.
+message ListCertificateResponse {
+  // certificates are the certificates of the page, with their private_key left empty.
+  repeated flock.api.config.cert.v1.Certificate certificates = 1 [(buf.validate.field).repeated = {min_items: 1}];
+}
+
+// Certificate is the service definition for the Certificate service.
+service Certificate {
+  // CreateCertificate creates a new certificate. The PEM fields are trimmed of surrounding whitespace and must decode
+  // as PEM, otherwise the call fails with InvalidArgument. It fails the same way when only one of cert_chain and
+  // private_key is set or when the two don't form a valid key pair. A caller who is not admin becomes the owner of
+  // the certificate.
+  rpc CreateCertificate(CreateCertificateRequest)
+      returns (CertificateResponse) {
+  }
+  // ReadCertificate returns the certificate with the given uuid, without its private key. It needs the reader role
+  // on the certificate.
+  rpc ReadCertificate(flock.services.core.v1.UuidRequest)
+      returns (CertificateResponse) {
+  }
+  // UpdateCertificate replaces the certificate with the given uuid, with the same checks as CreateCertificate. It
+  // needs the writer role on the certificate, and the owner role when the name changes.
+  rpc UpdateCertificate(UpdateCertificateRequest)
+      returns (CertificateResponse) {
+  }
+  // DeleteCertificate deletes the certificate with the given uuid. It needs the owner role on the certificate and
+  // fails with FailedPrecondition while a virtual server uses the certificate.
+  rpc DeleteCertificate(flock.services.core.v1.UuidRequest)
+      returns (google.protobuf.Empty) {
+  }
+  // ListCertificate returns the certificates the caller can read that match the filters, without their private
+  // keys. An admin gets every certificate, or those of the user given in the as_user header.
+  rpc ListCertificate(ListCertificateRequest)
+      returns (ListCertificateResponse) {
+  }
+}

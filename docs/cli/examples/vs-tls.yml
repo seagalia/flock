@@ -1,0 +1,17 @@
+name: tls-front
+port: 443
+tls_tcp_routes_config:
+  routes:
+  # tls terminated by flock with its certificate, the backend gets the decrypted traffic
+  - backend_uuid: 3ba3f9fa-b2c8-4faa-865e-dd2419913869
+    tls:
+      server_names:
+      - app.example.com
+      certificates_uuid:
+      - 8f1d5a52-6e0b-4f5e-9a51-0e4a2f6a7c11
+  # tls passed through: routed on the SNI, the backends keep their own certificates
+  - backend_uuid: d08a6358-2e6c-4083-b634-3efe465185c6
+    passthrough:
+      server_names:
+      - db.example.com
+      - '*.db.example.com'

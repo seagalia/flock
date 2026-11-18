@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package flock.api.config.vip.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/any.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/api/config/vip/v1;vip";
+
+// VIP describe a virtual IP address.
+message VIP {
+  // UUID is the unique identifier of the VIP, set by the controller on creation.
+  string UUID = 1;
+  // Name is the name of the VIP.
+  string name = 2 [(buf.validate.field).string = {min_len: 1}];
+  // IP is the IPv4 or IPv6 address of the VIP.
+  // An unspecified ip (0.0.0.0 or ::) stands for every address of that family on the machine of the agent, which
+  // serves it on each of them, and is never announced.
+  string ip = 3 [
+    (buf.validate.field).string.ip = true,
+    (buf.validate.field).string.max_len = 45
+  ];
+  // PrefixLength is the prefix length of the VIP, the agent configures and announces the VIP as ip/prefix_length.
+  // Default to 32 for IPv4 and 128 for IPv6. The agent treats a value out of range as the default.
+  int32 prefix_length = 4;
+  // VirtualServersUUID is the list of UUID of the virtual servers associated to the VIP.
+  // A tcp port and a udp port hold one virtual server each, except https and tls virtual servers which may share a
+  // tcp port when no server name is in two of them, at most one has no server names, and they agree on
+  // accept_proxy_protocol, connection limit and connection rate limit. An agent may ask them to agree on its own
+  // typed options too, and reports the virtual servers that don't in its status. l3 log enabled on one of them logs
+  // the whole port.
+  repeated string virtual_servers_uuid = 6 [(buf.validate.field).repeated.max_items = 1000];
+
+  // TypedAnnounce is an extension point for load balancer announcement if needed.
+  // valid extensions are:
+  // - flock.extensions.announces.starling_announce.v1.StarlingAnnounce
+  google.protobuf.Any typed_announce = 7;
+
+  // Free key/value pairs attached to the VIP. The controller indexes them, so list filters with is_metadata can
+  // match them. A value `secret://<secret uuid>/<key>` points at a value of a Secret instead of holding it, see
+  // flock.api.config.secret.v1.Secret.
+  map<string, string> metadata = 8;
+}

@@ -1,0 +1,8 @@
+version: v2
+# protoc-gen-crd compiles the sdk to read its ProvDefault, so it runs after buf.gen.yaml wrote the Go code
+plugins:
+  - local: [go, run, ../provisioners/kubernetes/protoc-gen-crd]
+    out: ../provisioners/kubernetes/api/v1alpha1
+    strategy: all
+    opt:
+      - roots=flock.api.config.zone.v1.Zone;flock.api.config.instance.v1.Instance;flock.api.config.cert.v1.Certificate;flock.api.config.backend.v1.Backend;flock.api.config.vip.v1.VIP;flock.api.config.vs.v1.VirtualServer

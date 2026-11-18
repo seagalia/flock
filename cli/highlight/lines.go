@@ -1,0 +1,103 @@
+package highlight
+
+import (
+	"strconv"
+	"strings"
+)
+
+type yamlLine struct {
+	raw   string
+	key   string
+	value string
+}
+
+func (l *yamlLine) isKeyValue() bool {
+	if strings.Contains(l.raw, "://") {
+		// It's a URL not k/v
+
+		return false
+
+	} else if strings.Contains(l.raw, ":") {
+		// Contains the separator but it might not be a k/v
+
+		t := strings.Split(l.raw, ":")
+
+		if strings.HasPrefix(t[1], " ") || len(t[1]) == 0 {
+			/* Checking if it's either:
+			- a proper k/v entry with a space after:
+			- just key:\n
+			*/
+
+			l.key = t[0]
+			l.value = strings.TrimSpace(strings.Join(t[1:], ":"))
+			return true
+
+		} else if len(t) > 2 && (strings.HasPrefix(t[len(t)-1], " ") || len(t[len(t)-1]) == 0) {
+			// Multiple : found, checking last one
+			/*
+				k:{"type":"Available"}:
+					.: {}
+					f:lastTransitionTime: {}
+					f:lastUpdateTime: {}
+			*/
+
+			l.key = strings.Join(t[0:len(t)-1], ":")
+			l.value = strings.TrimSpace(t[len(t)-1])
+			return true
+		}
+	}
+	return false
+
+}
+
+func (l yamlLine) isComment() bool {
+	return strings.TrimSpace(l.raw)[0] == '#'
+}
+
+func (l yamlLine) valueIsBoolean() bool {
+	if (strings.ToLower(l.value) == "true") || (strings.ToLower(l.value) == "false") {
+		return true
+	}
+	return false
+}
+
+func (l yamlLine) valueIsNumberOrIP() bool {
+	_, err := strconv.Atoi(strings.ReplaceAll(l.value, ".", ""))
+	return err == nil
+}
+
+func (l yamlLine) isEmptyLine() bool {
+	return len(strings.TrimSpace(l.raw)) <= 0
+}
+
+func (l yamlLine) isElementOfList() bool {
+	return string(strings.TrimSpace(l.raw)[0]) == "-"
+}
+
+func (l yamlLine) isUrl() bool {
+	return strings.Contains(l.raw, "://")
+}
+
+func (l yamlLine) indentationSpaces() int {
+	count := 0
+
+	for _, v := range l.raw {
+		if string(v) == " " {
+			count += 1
+		} else {
+			break
+		}
+	}
+	return count
+}
+
+func (l yamlLine) valueContainsChompingIndicator() bool {
+	indicators := []string{">", ">-", ">+", "|", "|-", "|+"}
+
+	for _, in := range indicators {
+		if strings.Contains(l.value, in) {
+			return true
+		}
+	}
+	return false
+}

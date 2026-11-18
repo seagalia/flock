@@ -1,0 +1,17 @@
+package ctl
+
+import (
+	"testing"
+
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	"github.com/seagalia/flock/sdk/logging"
+)
+
+func TestCtl(t *testing.T) {
+	RegisterFailHandler(Fail)
+	if err := logging.Setup(logging.Options{Console: GinkgoWriter}); err != nil {
+		t.Fatal(err)
+	}
+	RunSpecs(t, "Ctl Suite")
+}

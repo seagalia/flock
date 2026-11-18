@@ -1,0 +1,10 @@
+.git
+.idea
+.crap
+.superpowers
+.claude
+*.db
+dist
+flock
+webui/node_modules
+webui/.angular

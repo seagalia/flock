@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package flock.api.config.permission.v1;
+
+
+option go_package = "github.com/seagalia/flock/sdk/flock/api/config/permission/v1;permission";
+
+// Role is the permission role.
+// READER: can read the resource and use it in another resource.
+// WRITER: can read and update the resource.
+// OWNER: can read, update, delete and set permission on the resource.
+// Order is important, a member holding a role also holds every lower one.
+enum Role {
+  READER = 0;
+  WRITER = 10;
+  OWNER = 20;
+}
+
+// MemberType is the type of the member.
+enum MemberType {
+  // USER is matched against the username of the caller.
+  USER = 0;
+  // GROUP is matched against the groups of the caller given by its login service.
+  GROUP = 1;
+}
+
+// Member is a user or a group.
+message Member {
+  // MemberType tells if member_name is a username or a group name.
+  MemberType member_type = 1;
+  // MemberName is the username or the group name.
+  string member_name = 2;
+}
+
+// MemberPermission is a permission on a resource for a given member. A member holds one role per resource.
+message MemberPermission {
+  // Role is the role of the member on the resource.
+  Role role = 1;
+  // Member is the user or group holding the role.
+  Member member = 2;
+}

@@ -1,0 +1,94 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # setup-go saves once per go.sum and the first job to end wins, so only the test job caches go
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.15.0
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: actions/cache/restore@v6
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-race-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            go-race-${{ hashFiles('go.sum') }}-
+            go-race-
+      - run: go run github.com/onsi/ginkgo/v2/ginkgo --randomize-all --race -r
+        env:
+          CGO_ENABLED: "1"
+      # a failed spec leaves the compiled packages as valid as a green run
+      - if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-race-${{ hashFiles('go.sum') }}-${{ github.sha }}
+
+  webui:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: webui
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: ./.nvmrc
+          cache: npm
+          cache-dependency-path: webui/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test -- --watch=false
+      - run: npm run build
+
+  api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: bufbuild/buf-action@v1
+        with:
+          version: 1.74.0
+          setup_only: true
+          # optional, unauthenticated calls to buf.build are rate limited
+          token: ${{ secrets.BUF_TOKEN }}
+      - name: api lint
+        run: make api-lint
+      - name: generated code is up to date
+        run: |
+          make generate
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "run make generate and commit the result, out of date files:"
+            git status --porcelain
+            exit 1
+          fi

@@ -1,0 +1,17 @@
+# Bind it with a ClusterRoleBinding: a RoleBinding grants nothing on these cluster-scoped kinds.
+#
+# Manages instances, certificates, backends and virtual servers, and only reads zones and VIPs, which flock itself
+# lets only its admins create.
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: kubernetes
+    app.kubernetes.io/managed-by: kustomize
+  name: flock-editor
+aggregationRule:
+  clusterRoleSelectors:
+  - matchLabels:
+      flock.seagalia.io/aggregate-to-editor: "true"
+rules: []

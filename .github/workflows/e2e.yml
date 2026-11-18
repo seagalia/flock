@@ -1,0 +1,126 @@
+name: e2e
+
+on:
+  workflow_dispatch:
+  # the e2e badge of the documentation shows the state of main
+  push:
+    branches: [main]
+    paths:
+      - controller/**
+      - agent/**
+      - sdk/**
+      - cli/**
+      - devenv/**
+      - provisioners/**
+      - e2e/**
+      - Makefile
+      - main.go
+      - go.mod
+      - go.sum
+  pull_request:
+    paths:
+      - controller/**
+      - agent/**
+      - sdk/**
+      - cli/**
+      - devenv/**
+      - provisioners/**
+      - e2e/**
+      - Makefile
+      - main.go
+      - go.mod
+      - go.sum
+
+permissions:
+  contents: read
+
+jobs:
+  controller:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - run: make e2e-controller
+        env:
+          DOCKER_HOST: unix:///var/run/docker.sock
+
+  agent:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      # the agent container is privileged and shares the runner kernel, load what run-agent.sh expects
+      - run: |
+          for module in ip_vs ip_vs_rr ip_vs_wrr ip_vs_sh ip_vs_lc ip_vs_wlc ip_vs_mh nf_conntrack; do
+            sudo modprobe "$module"
+          done
+      - run: make e2e-agent
+        env:
+          DOCKER_HOST: unix:///var/run/docker.sock
+
+  stack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - run: |
+          for module in ip_vs ip_vs_rr ip_vs_wrr ip_vs_sh ip_vs_lc ip_vs_wlc ip_vs_mh nf_conntrack; do
+            sudo modprobe "$module"
+          done
+      - run: make e2e-stack
+        env:
+          DOCKER_HOST: unix:///var/run/docker.sock
+
+  provisioner:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - run: |
+          for module in ip_vs ip_vs_rr ip_vs_wrr ip_vs_sh ip_vs_lc ip_vs_wlc ip_vs_mh nf_conntrack; do
+            sudo modprobe "$module"
+          done
+      - run: make e2e-provisioner
+        env:
+          DOCKER_HOST: unix:///var/run/docker.sock
+
+  dev:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      # the privileged spec runs the real agent on the runner kernel, and its container has no /lib/modules to load them
+      - run: |
+          for module in ip_vs ip_vs_rr ip_vs_wrr ip_vs_sh ip_vs_lc ip_vs_wlc ip_vs_mh nf_conntrack; do
+            sudo modprobe "$module"
+          done
+      - run: make e2e-dev
+        env:
+          DOCKER_HOST: unix:///var/run/docker.sock
+
+  waf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - run: make e2e-waf
+        env:
+          DOCKER_HOST: unix:///var/run/docker.sock

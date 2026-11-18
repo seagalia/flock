@@ -1,0 +1,38 @@
+name: api
+port: 8080
+http_routes_config:
+  virtual_hosts:
+  - domains:
+    - api.example.com
+    routes:
+    - name: default
+      match:
+        prefix: /
+      backend_uuid: 3ba3f9fa-b2c8-4faa-865e-dd2419913869
+      # each rate limit builds one descriptor of the request, matched against the descriptors of limit_config
+      typed_options:
+        '@type': type.googleapis.com/flock.extensions.route.starling_route.v1.VirtualHostRouteOptions
+        rate_limits:
+        - actions:
+          - remote_address: {}
+        - actions:
+          - request_headers:
+              header_name: x-api-key
+              descriptor_key: api_key
+limit_config:
+- typed_limit:
+    '@type': type.googleapis.com/flock.extensions.limit.starling_limit.v1.StarlingRateLimit
+    descriptors:
+    - key: remote_address
+      policy:
+        unit: MINUTE
+        requests_per_unit: 100
+    - key: api_key
+      policy:
+        unit: MINUTE
+        requests_per_unit: 1000
+    - key: api_key
+      value: partner
+      policy:
+        unit: MINUTE
+        requests_per_unit: 10000

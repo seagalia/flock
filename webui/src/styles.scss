@@ -1,0 +1,349 @@
+@use '@angular/material' as mat;
+@use './styles/theme-colors' as flock;
+
+// Seagalia brand palette (seagalia-brand/docs/palette.json): green of the flock bird as primary, coral accent, ink text.
+// Light uses the bird's shade #13734E because white text on #35B77D is too faint (about 2.5:1) for buttons and links.
+// Every color is a light-dark() pair: <html> color-scheme picks the system one, or the one the user chose.
+html {
+  color-scheme: light dark;
+
+  @include mat.theme(
+    (
+      color: (
+        primary: flock.$primary-palette,
+        tertiary: flock.$tertiary-palette,
+      ),
+      typography: (
+        plain-family: 'Titillium Web',
+        brand-family: 'Titillium Web',
+        bold-weight: 700,
+        medium-weight: 600,
+        regular-weight: 400,
+      ),
+      density: -1,
+    )
+  );
+
+  // flat brand: surfaces are white on cream in light, ink on deep navy in dark
+  @include mat.theme-overrides(
+    (
+      background: light-dark(#fff9f0, #071f3b),
+      surface: light-dark(#ffffff, #0b2f55),
+      on-surface: light-dark(#0b2f55, #eaf3fb),
+      surface-container-lowest: light-dark(#ffffff, #0a2a4c),
+      surface-container-low: light-dark(#ffffff, #0d345e),
+      surface-container: light-dark(#ffffff, #0f3964),
+      surface-container-high: light-dark(#f7f2ea, #123f6d),
+      surface-container-highest: light-dark(#efe9df, #164676),
+      outline-variant: light-dark(#e5ded3, #24507f),
+      primary: light-dark(#13734e, #35b77d),
+      on-primary: light-dark(#ffffff, #0b2f55),
+      tertiary: light-dark(#c75530, #f4774b),
+      on-tertiary: light-dark(#ffffff, #3b0f00),
+    )
+  );
+
+  --flock-bg: light-dark(#fff9f0, #071f3b);
+  --flock-border: light-dark(#e5ded3, #24507f);
+  --flock-backdrop: light-dark(rgb(11 47 85 / 12%), rgb(0 0 0 / 40%));
+  --flock-hover: light-dark(#f4eee4, #10406f);
+  --flock-selected: light-dark(#ece4d8, #14497d);
+  --flock-link: light-dark(#13734e, #35b77d);
+  --flock-link-hover: light-dark(#0b2f55, #ffffff);
+  --flock-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  --flock-code-bg: #0b1f36;
+  --flock-code-text: #eaf3fb;
+  --flock-json-string: light-dark(#087e8b, #34bbc1);
+  --flock-json-number: light-dark(#ad4939, #f4774b);
+  --flock-glow-azure: light-dark(rgb(11 143 222 / 14%), rgb(11 143 222 / 22%));
+  --flock-glow-coral: light-dark(rgb(244 119 75 / 12%), rgb(244 119 75 / 14%));
+
+  // state chips keep the brand colors in both schemes, ink text stays readable on all of them. Ok is green, the color
+  // people read as working.
+  --flock-ok: #35b77d;
+  --flock-warning: #ff9c21;
+  --flock-error: #f4774b;
+  --flock-unknown: light-dark(#e5ded3, #d9dee0);
+  --flock-in-progress: #83cfff;
+  --flock-on-chip: #0b2f55;
+  --flock-ok-text: light-dark(#13734e, #35b77d);
+  --flock-warning-text: light-dark(#a35a00, #ff9c21);
+  --flock-error-text: light-dark(#ad4939, #f4774b);
+  --flock-role-owner: #83cfff;
+  --flock-role-writer: #34bbc1;
+  --flock-role-reader: #e5ded3;
+}
+
+html.theme-light {
+  color-scheme: light;
+}
+
+html.theme-dark {
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--flock-bg);
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-medium);
+  font-family: 'Titillium Web', system-ui, sans-serif;
+}
+
+h1 {
+  font: var(--mat-sys-headline-small);
+  font-weight: 700;
+  margin: 24px 0 12px;
+}
+
+h2 {
+  font: var(--mat-sys-title-large);
+  font-weight: 600;
+  margin: 20px 0 8px;
+}
+
+h3 {
+  font: var(--mat-sys-title-medium);
+  margin: 16px 0 6px;
+}
+
+h1 + .mat-divider {
+  margin-bottom: 20px;
+}
+
+a:not(.mat-mdc-button-base):not(.mat-mdc-list-item) {
+  color: var(--flock-link);
+  text-decoration: underline;
+
+  &:hover {
+    color: var(--flock-link-hover);
+    text-decoration: none;
+  }
+}
+
+// side panels sit at z-index 1000+, dialogs and menus opened from them must be above
+.cdk-overlay-container {
+  z-index: 2000;
+}
+
+// tables: bold headers, rows that expand on click
+.mat-mdc-table {
+  background: transparent;
+}
+
+th.mat-mdc-header-cell {
+  font-weight: 700;
+}
+
+tr.element-row.clickable {
+  cursor: pointer;
+
+  &:hover {
+    background: var(--flock-hover);
+  }
+
+  &:not(.expanded-row):active {
+    background: var(--flock-selected);
+  }
+}
+
+tr.element-row.expanded-row {
+  background: var(--flock-selected);
+}
+
+// chips for states, roles and features
+.chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--flock-on-chip);
+  background: var(--flock-unknown);
+
+  &.clickable {
+    cursor: pointer;
+  }
+
+  &.ok {
+    background: var(--flock-ok);
+  }
+
+  &.warning {
+    background: var(--flock-warning);
+  }
+
+  &.error {
+    background: var(--flock-error);
+  }
+
+  &.in-progress {
+    background: var(--flock-in-progress);
+  }
+
+  &.unknown {
+    background: var(--flock-unknown);
+  }
+
+  &.role-owner {
+    background: var(--flock-role-owner);
+  }
+
+  &.role-writer {
+    background: var(--flock-role-writer);
+  }
+
+  &.role-reader {
+    background: var(--flock-role-reader);
+  }
+}
+
+// the state of an agent or of one of its components, shape and color so it reads without color too
+.state-dot {
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--flock-unknown);
+
+  &.ok {
+    background: var(--flock-ok);
+    border-color: var(--flock-ok);
+  }
+
+  &.warning {
+    background: var(--flock-warning);
+    border-color: var(--flock-warning);
+    border-radius: 2px;
+    transform: rotate(45deg) scale(0.85);
+  }
+
+  &.error {
+    background: var(--flock-error);
+    border-color: var(--flock-error);
+  }
+}
+
+// mtx popovers take the menu surface
+.mtx-popover-panel {
+  max-width: min(560px, 90vw);
+  max-height: 60vh;
+  overflow: auto;
+  background: var(--mat-sys-surface-container) !important;
+  color: var(--mat-sys-on-surface) !important;
+  border: 1px solid var(--flock-border);
+}
+
+// cards are flat: outlined, no shadow
+.mat-mdc-card-outlined {
+  --mat-card-outlined-outline-color: var(--flock-border);
+  background: var(--mat-sys-surface);
+}
+
+.mat-mdc-card-subtitle {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+// card grids of the expanded rows: equal columns so cards line up whatever their content
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+  margin: 10px 0;
+
+  .mat-mdc-card {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  // material pads a card header on top only: a card holding just a header would sit low
+  .mat-mdc-card-header:last-child {
+    padding-bottom: 16px;
+  }
+}
+
+// the popovers of the tour (driver.js) take the surface, text and buttons of the dashboard in both schemes
+.driver-popover.flock-tour {
+  --driver-popover-font-family: 'Titillium Web', sans-serif;
+  max-width: 340px;
+  border: 1px solid var(--flock-border);
+  border-radius: 12px;
+  background-color: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+
+  .driver-popover-progress-text,
+  .driver-popover-close-btn {
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  .driver-popover-footer-btn {
+    border: 1px solid var(--mat-sys-primary);
+    border-radius: 999px;
+    padding: 4px 14px;
+    background-color: transparent;
+    color: var(--mat-sys-primary);
+    font-size: 13px;
+    text-shadow: none;
+  }
+
+  .driver-popover-next-btn {
+    background-color: var(--mat-sys-primary);
+    color: var(--mat-sys-on-primary);
+  }
+
+  .flock-tour-bird {
+    display: block;
+    margin: 4px auto 12px;
+  }
+
+  .flock-tour-bird.flying {
+    animation: flock-tour-flight 1.4s cubic-bezier(0.45, 0, 0.7, 0.4) forwards;
+  }
+
+  .driver-popover-arrow-side-left {
+    border-left-color: var(--mat-sys-surface);
+  }
+
+  .driver-popover-arrow-side-right {
+    border-right-color: var(--mat-sys-surface);
+  }
+
+  .driver-popover-arrow-side-top {
+    border-top-color: var(--mat-sys-surface);
+  }
+
+  .driver-popover-arrow-side-bottom {
+    border-bottom-color: var(--mat-sys-surface);
+  }
+}
+
+// the bird crouches, takes off and flies out of the top right corner of the page, flapping as it shrinks away
+@keyframes flock-tour-flight {
+  0% {
+    transform: translate(0, 0) rotate(0) scale(1);
+  }
+  15% {
+    transform: translate(-10px, 10px) rotate(6deg) scale(1.05, 0.9);
+  }
+  35% {
+    transform: translate(12vw, -12vh) rotate(-14deg) scale(1, 1.05);
+  }
+  55% {
+    transform: translate(30vw, -30vh) rotate(-6deg) scale(0.8, 0.7);
+  }
+  75% {
+    transform: translate(52vw, -55vh) rotate(-16deg) scale(0.6);
+  }
+  100% {
+    transform: translate(80vw, -95vh) rotate(-10deg) scale(0.35);
+    opacity: 0;
+  }
+}

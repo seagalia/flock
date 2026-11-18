@@ -1,0 +1,123 @@
+syntax = "proto3";
+
+package flock.services.permission.v1;
+
+import "google/protobuf/empty.proto";
+import "buf/validate/validate.proto";
+import "flock/api/config/permission/v1/permission.proto";
+
+option go_package = "github.com/seagalia/flock/sdk/flock/services/permission/v1;svcperm";
+
+// AddPermissionRequest represents a request to give a role on a resource to a member.
+message AddPermissionRequest {
+  // ResourceType is the type url of the resource, for example
+  // "type.googleapis.com/flock.api.config.vs.v1.VirtualServer". Backends, certificates, instances, VIPs, virtual
+  // servers and zones have permissions.
+  string resource_type = 1 [(buf.validate.field).string = {min_len: 1}];
+  // ResourceUUID is the UUID of the resource.
+  string resource_uuid = 2 [(buf.validate.field).string = {min_len: 1}];
+  // Role to give, it replaces the role the member had on the resource. READER by default.
+  flock.api.config.permission.v1.Role Role = 3;
+  // Member to give the role to.
+  flock.api.config.permission.v1.Member member = 4 [(buf.validate.field) = {required: true}];
+}
+
+// DeletePermissionRequest represents a request to remove the role of a member on a resource.
+message DeletePermissionRequest {
+  // ResourceType is the type url of the resource, for example
+  // "type.googleapis.com/flock.api.config.vs.v1.VirtualServer". Backends, certificates, instances, VIPs, virtual
+  // servers and zones have permissions.
+  string resource_type = 1 [(buf.validate.field).string = {min_len: 1}];
+  // ResourceUUID is the UUID of the resource.
+  string resource_uuid = 2 [(buf.validate.field).string = {min_len: 1}];
+  // Member whose role is removed, whatever the role.
+  flock.api.config.permission.v1.Member member = 3 [(buf.validate.field) = {required: true}];
+}
+
+// ListMemberPermissionsRequest represents a request to list permissions for a resource.
+message ListMemberPermissionsRequest {
+  // ResourceType is the type url of the resource, for example
+  // "type.googleapis.com/flock.api.config.vs.v1.VirtualServer". Backends, certificates, instances, VIPs, virtual
+  // servers and zones have permissions.
+  string resource_type = 1 [(buf.validate.field).string = {min_len: 1}];
+  // ResourceUUID is the UUID of the resource.
+  string resource_uuid = 2 [(buf.validate.field).string = {min_len: 1}];
+  // Role is the only role listed, READER by default.
+  flock.api.config.permission.v1.Role Role = 3;
+  // SeeAll lists the members of every role, Role is then ignored.
+  bool see_all = 4;
+}
+
+// ListMemberPermissionsResponse represents a response to list permissions for a resource.
+message ListMemberPermissionsResponse {
+  // MemberPermissions are the permissions on the resource, ordered by role from READER to OWNER.
+  repeated flock.api.config.permission.v1.MemberPermission member_permissions = 1;
+  // AllowAllRead tells whether every authenticated user can read the resource, as set by SetAllowAllRead.
+  bool allow_all_read = 2;
+}
+
+// HasPermissionRequest represents a request to check if a member has a permission on a resource.
+message HasPermissionRequest {
+  // ResourceType is the type url of the resource, for example
+  // "type.googleapis.com/flock.api.config.vs.v1.VirtualServer". Backends, certificates, instances, VIPs, virtual
+  // servers and zones have permissions.
+  string resource_type = 1 [(buf.validate.field).string = {min_len: 1}];
+  // ResourceUUID is the UUID of the resource.
+  string resource_uuid = 2 [(buf.validate.field).string = {min_len: 1}];
+  // Role to check, holding a higher role is enough. READER by default.
+  flock.api.config.permission.v1.Role Role = 3;
+  // Member to check. A GROUP member is checked for the permissions given to that group only.
+  flock.api.config.permission.v1.Member member = 4 [(buf.validate.field) = {required: true}];
+}
+
+// SetAllowAllReadRequest represents a request to set the allow all read flag on a resource.
+message SetAllowAllReadRequest {
+  // ResourceType is the type url of the resource, for example
+  // "type.googleapis.com/flock.api.config.vs.v1.VirtualServer". Backends, certificates, instances, VIPs, virtual
+  // servers and zones have permissions.
+  string resource_type = 1 [(buf.validate.field).string = {min_len: 1}];
+  // ResourceUUID is the UUID of the resource.
+  string resource_uuid = 2 [(buf.validate.field).string = {min_len: 1}];
+  // AllowAllRead set to true lets any user read the resource and use it in another resource, false removes it.
+  bool allow_all_read = 3;
+}
+
+// HasPermissionResponse represents a response to check if a member has a permission on a resource.
+message HasPermissionResponse {
+  // HasPermission is true when the member holds the role or a higher one on the resource. For READER, it is also
+  // true when the resource allows all read.
+  bool has_permission = 1;
+}
+
+// Permission is the permission service.
+// Setting permissions on a resource allows to control who can read or modify it.
+// Read Permission allow re-use of resources in other resources.
+// Admins of the controller configuration hold every permission. Changing a permission needs the OWNER role on the
+// resource, reading them needs READER.
+service Permission {
+  // AddPermission gives a role on a resource to a member. The role is also given on the resources it uses (the VIPs
+  // of an instance, the backends of a virtual server, ...), except zones and resources allowing all read that the
+  // caller does not own. The call fails when the caller does not own one of the other resources it uses. Resources
+  // created at boot (UUID prefixed with 00000000-0000-0000-0000-) are left unchanged.
+  rpc AddPermission(AddPermissionRequest)
+      returns (google.protobuf.Empty) {
+  }
+  // SetAllowAllRead sets the allow all read flag on a resource.
+  // If set, anyone can read the resource and use it in another resource. It needs the OWNER role.
+  rpc SetAllowAllRead(SetAllowAllReadRequest)
+      returns (google.protobuf.Empty) {
+  }
+  // HasPermission checks if a member has a permission on a resource. The caller needs the READER role on it.
+  rpc HasPermission(HasPermissionRequest)
+      returns (HasPermissionResponse) {
+  }
+  // DeletePermission removes the role of a member on a resource, and on the resources it uses that the caller owns.
+  // Removing the last owner is refused with FailedPrecondition.
+  rpc DeletePermission(DeletePermissionRequest)
+      returns (google.protobuf.Empty) {
+  }
+  // ListMemberPermissions lists the permissions on a resource. The caller needs the READER role on it.
+  rpc ListMemberPermissions(ListMemberPermissionsRequest)
+      returns (ListMemberPermissionsResponse) {
+  }
+}

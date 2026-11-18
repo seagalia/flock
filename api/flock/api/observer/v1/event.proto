@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package flock.api.observer.v1;
+
+
+option go_package = "github.com/seagalia/flock/sdk/flock/api/observer/v1;observer";
+
+// EventType is the kind of change a controller event reports on a resource. Its name is the topic of the event on
+// the internal bus and, prefixed with `controller.`, the NATS subject when controllers are bridged.
+enum EventType {
+  // The resource was created.
+  CREATE_SUBJECT = 0;
+  // The resource was updated.
+  UPDATE_SUBJECT = 1;
+  // The resource was deleted.
+  DELETE_SUBJECT = 2;
+}

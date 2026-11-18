@@ -1,0 +1,70 @@
+.surface {
+  border: 1px solid var(--flock-border);
+  border-radius: 12px;
+  background: var(--mat-sys-surface);
+  overflow: hidden;
+}
+
+.control {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  padding: 16px;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+}
+
+tr.detail-row {
+  height: 0;
+
+  td {
+    border-bottom-width: 0;
+  }
+}
+
+.notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+
+  // the F5 notes give a whole sentence as label, kept on one line it would widen the table
+  .chip {
+    white-space: normal;
+  }
+}
+
+.no-data {
+  padding: 16px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.diff {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0;
+
+  &.ADD mat-icon {
+    color: var(--flock-ok-text);
+  }
+
+  &.REMOVE mat-icon {
+    color: var(--flock-error-text);
+  }
+
+  &.UPDATE mat-icon {
+    color: var(--flock-warning-text);
+  }
+}
+
+@media (max-width: 600px) {
+  .control mat-form-field {
+    width: 100%;
+  }
+}
